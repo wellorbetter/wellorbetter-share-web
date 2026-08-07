@@ -2,7 +2,7 @@
 
 `wellorbetterai.com` 前端（**公开仓库**）：文件分享应用 + 落地页。
 
-- `apps/share` — 文件分享 SPA（上传 / 我的分享 / 用户管理 / 下载页），路由级懒加载
+- `apps/share` — 文件分享 SPA（上传 / 我的分享 / 用户管理 / 用量与配额 / 下载页），路由级懒加载
 - `apps/landing` — 落地页（中英双语、深浅色主题）
 - `packages/design` — 设计系统（CSS 变量、SVG 图标）
 - `packages/shared` — 与后端共享的类型与常量（与私有仓库 `wellorbetter/wellorbetter-api` 同步维护）
@@ -15,6 +15,10 @@
 | `wellorbetterai.com` / `www` | 落地页 |
 
 API 走 `api.wellorbetterai.com`（见 `VITE_API_BASE`，本地开发走 Vite 代理到 `localhost:8788`）。
+
+## 从 0 搭建
+
+完整部署指南（域名 → Cloudflare → R2/D1/KV → secrets → 部署 → 配额管理）：[wellorbetter-api/docs/DEPLOY-FROM-SCRATCH.md](https://github.com/wellorbetter/wellorbetter-api/blob/main/docs/DEPLOY-FROM-SCRATCH.md)
 
 ## 本地开发
 
