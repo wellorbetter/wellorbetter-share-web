@@ -1,4 +1,5 @@
-import { useState } from "react";
+﻿import { useState } from "react";
+import { icon } from "@wellorbetter/design";
 import { api, ApiError } from "../api.js";
 
 export function LoginPage({ onAuthed }: { onAuthed: () => void }) {
@@ -53,7 +54,7 @@ export function LoginPage({ onAuthed }: { onAuthed: () => void }) {
             onClick={() => setShow((s) => !s)}
             aria-label={show ? "隐藏密码" : "显示密码"}
           >
-            {show ? "🙈" : "👁"}
+            <span dangerouslySetInnerHTML={{ __html: icon(show ? "eye-off" : "eye", 20) }} />
           </button>
         </div>
         {error && (

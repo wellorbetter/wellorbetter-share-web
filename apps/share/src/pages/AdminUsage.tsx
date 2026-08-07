@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { formatBytes, type AdminSettings, type AdminUsageResponse } from "@wellorbetter/shared";
 import { api, ApiError } from "../api.js";
+import { Dialog } from "../components/Dialog.js";
 
 const GB = 1024 * 1024 * 1024;
 
@@ -52,6 +53,8 @@ export function AdminUsagePage() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [quotaTarget, setQuotaTarget] = useState<{ user: AdminUsageResponse["users"][number]; kind: "storage" | "download" } | null>(null);
+  const [quotaInput, setQuotaInput] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,25 +96,30 @@ export function AdminUsagePage() {
     }
   }
 
-  /** 设置单个用户配额（null = 恢复默认） */
-  async function editQuota(userId: string, username: string, kind: "storage" | "download") {
+  /** 打开配额编辑对话框 */
+  function openQuota(userId: string, kind: "storage" | "download") {
     const u = data?.users.find((x) => x.id === userId);
     if (!u) return;
     const current =
       kind === "storage" ? u.effectiveStorageQuotaBytes : u.effectiveDownloadQuotaBytes;
-    const label = kind === "storage" ? "存储配额" : "每月下载配额";
-    const input = window.prompt(
-      `设置 ${username} 的${label}（单位 GB，留空恢复为全局默认）。当前生效：${bytesToGb(current)} GB`,
-      bytesToGb(current),
-    );
-    if (input === null) return;
-    setBusyId(userId);
+    setQuotaTarget({ user: u, kind });
+    setQuotaInput(bytesToGb(current));
+  }
+
+  /** 保存单用户配额（空 = 恢复默认） */
+  async function saveQuota() {
+    if (!quotaTarget || busyId) return;
+    const { user, kind } = quotaTarget;
+    const current =
+      kind === "storage" ? user.effectiveStorageQuotaBytes : user.effectiveDownloadQuotaBytes;
+    setBusyId(user.id);
     setError(null);
     try {
-      await api.adminUpdateUser(userId, {
+      await api.adminUpdateUser(user.id, {
         [kind === "storage" ? "storageQuotaBytes" : "downloadQuotaBytes"]:
-          input.trim() === "" ? null : gbToBytes(input, current),
+          quotaInput.trim() === "" ? null : gbToBytes(quotaInput, current),
       });
+      setQuotaTarget(null);
       void load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "更新失败");
@@ -142,6 +150,43 @@ export function AdminUsagePage() {
 
   return (
     <div className="manage-page usage-page">
+      <Dialog
+        title={quotaTarget ? `设置配额 · ${quotaTarget.user.username}` : "设置配额"}
+        open={quotaTarget !== null}
+        onClose={() => {
+          if (!busyId) setQuotaTarget(null);
+        }}
+      >
+        <p>
+          {quotaTarget?.kind === "storage" ? "存储配额" : "每月下载配额"}
+          （单位 GB，留空恢复为全局默认）。当前生效：
+          {quotaTarget
+            ? bytesToGb(
+                quotaTarget.kind === "storage"
+                  ? quotaTarget.user.effectiveStorageQuotaBytes
+                  : quotaTarget.user.effectiveDownloadQuotaBytes,
+              )
+            : ""}{" "}
+          GB
+        </p>
+        <input
+          type="number"
+          min={0.0625}
+          value={quotaInput}
+          onChange={(e) => setQuotaInput(e.target.value)}
+          placeholder="留空恢复默认"
+          aria-label="配额"
+          autoFocus
+        />
+        <div className="m3-dialog-actions">
+          <button type="button" className="ghost-btn" disabled={busyId !== null} onClick={() => setQuotaTarget(null)}>
+            取消
+          </button>
+          <button type="button" className="primary-btn" disabled={busyId !== null} onClick={() => void saveQuota()}>
+            {busyId !== null ? "保存中…" : "保存"}
+          </button>
+        </div>
+      </Dialog>
       <div className="manage-head">
         <h2>用量与配额</h2>
         <span className="manage-count">统计月份 {data.month}（下载流量按月累计）</span>
@@ -267,7 +312,7 @@ export function AdminUsagePage() {
                     type="button"
                     className="ghost-btn usage-edit"
                     disabled={busyId === u.id}
-                    onClick={() => void editQuota(u.id, u.username, "storage")}
+                    onClick={() => void openQuota(u.id, "storage")}
                   >
                     调整
                   </button>
@@ -284,7 +329,7 @@ export function AdminUsagePage() {
                     type="button"
                     className="ghost-btn usage-edit"
                     disabled={busyId === u.id}
-                    onClick={() => void editQuota(u.id, u.username, "download")}
+                    onClick={() => void openQuota(u.id, "download")}
                   >
                     调整
                   </button>

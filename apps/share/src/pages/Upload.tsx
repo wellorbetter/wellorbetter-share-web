@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import {
   MAX_FILE_SIZE,
   EXPIRY_OPTIONS_SECONDS,
@@ -6,6 +6,7 @@ import {
   type UploadProgress,
 } from "@wellorbetter/shared";
 import { api, ApiError, copyText } from "../api.js";
+import { Dialog } from "../components/Dialog.js";
 
 type Phase = "idle" | "uploading" | "success" | "error";
 
@@ -20,6 +21,7 @@ export function UploadPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [confirmPermanent, setConfirmPermanent] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,9 +45,18 @@ export function UploadPage() {
     setPhase("idle");
   }
 
+  function startUpload() {
+    if (!file || phase === "uploading") return;
+    if (expiry === null) {
+      setConfirmPermanent(true);
+      return;
+    }
+    void upload();
+  }
+
   async function upload() {
     if (!file || phase === "uploading") return;
-    if (expiry === null && !window.confirm("永久链接将长期可访问，确定生成吗？")) return;
+    
     setPhase("uploading");
     setError(null);
     setProgress(null);
@@ -96,6 +107,28 @@ export function UploadPage() {
 
   return (
     <div className="upload-page">
+      <Dialog
+        title="永久链接"
+        open={confirmPermanent}
+        onClose={() => setConfirmPermanent(false)}
+      >
+        <p>永久链接将长期可访问，确定生成吗？</p>
+        <div className="m3-dialog-actions">
+          <button type="button" className="ghost-btn" onClick={() => setConfirmPermanent(false)}>
+            取消
+          </button>
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={() => {
+              setConfirmPermanent(false);
+              void upload();
+            }}
+          >
+            确定生成
+          </button>
+        </div>
+      </Dialog>
       <div
         className={`dropzone${dragOver ? " is-dragover" : ""}${file ? " has-file" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -185,7 +218,7 @@ export function UploadPage() {
               disabled={phase === "uploading"}
             />
           </label>
-          <button type="button" className="primary-btn" onClick={upload} disabled={!file || phase === "uploading"}>
+          <button type="button" className="primary-btn" onClick={startUpload} disabled={!file || phase === "uploading"}>
             {phase === "uploading" ? "上传中…" : "生成分享链接"}
           </button>
         </div>

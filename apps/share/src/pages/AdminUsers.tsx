@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import type { AdminUserItem, UserRole } from "@wellorbetter/shared";
 import { api, ApiError } from "../api.js";
+import { Dialog } from "../components/Dialog.js";
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserItem[] | null>(null);
@@ -10,6 +11,12 @@ export function AdminUsersPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("user");
   const [busy, setBusy] = useState(false);
+
+  // 删除 / 重置密码对话框
+  const [deleteTarget, setDeleteTarget] = useState<AdminUserItem | null>(null);
+  const [resetTarget, setResetTarget] = useState<AdminUserItem | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [dialogBusy, setDialogBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,28 +53,34 @@ export function AdminUsersPage() {
     }
   }
 
-  async function remove(id: string, name: string) {
-    if (!window.confirm(`确认删除用户 ${name}？其名下分享将保留但无法再登录。`)) return;
+  async function confirmDelete() {
+    if (!deleteTarget || dialogBusy) return;
+    setDialogBusy(true);
+    setError(null);
     try {
-      await api.adminDeleteUser(id);
+      await api.adminDeleteUser(deleteTarget.id);
+      setDeleteTarget(null);
       void load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "删除失败");
+    } finally {
+      setDialogBusy(false);
     }
   }
 
-  async function resetPassword(id: string, name: string) {
-    const next = window.prompt(`为用户 ${name} 设置新密码（至少 8 位）：`);
-    if (!next) return;
-    if (next.length < 8) {
-      setError("密码长度需为 8-72 位");
-      return;
-    }
+  async function submitReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetTarget || dialogBusy || newPassword.length < 8) return;
+    setDialogBusy(true);
+    setError(null);
     try {
-      await api.adminResetPassword(id, next);
-      setError(null);
+      await api.adminResetPassword(resetTarget.id, newPassword);
+      setResetTarget(null);
+      setNewPassword("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "重置失败");
+    } finally {
+      setDialogBusy(false);
     }
   }
 
@@ -138,10 +151,10 @@ export function AdminUsersPage() {
                 </span>
               </div>
               <div className="share-row-actions">
-                <button type="button" className="ghost-btn" onClick={() => resetPassword(u.id, u.username)}>
+                <button type="button" className="ghost-btn" onClick={() => setResetTarget(u)}>
                   重置密码
                 </button>
-                <button type="button" className="ghost-btn danger-text" onClick={() => remove(u.id, u.username)}>
+                <button type="button" className="ghost-btn danger-text" onClick={() => setDeleteTarget(u)}>
                   删除
                 </button>
               </div>
@@ -149,6 +162,70 @@ export function AdminUsersPage() {
           ))}
         </div>
       )}
+
+      {/* 删除确认对话框 */}
+      <Dialog
+        title="删除用户"
+        open={deleteTarget !== null}
+        onClose={() => {
+          if (!dialogBusy) setDeleteTarget(null);
+        }}
+      >
+        <p>
+          确认删除用户 <strong>{deleteTarget?.username}</strong>？其名下分享将保留但无法再登录。
+        </p>
+        <div className="m3-dialog-actions">
+          <button type="button" className="ghost-btn" disabled={dialogBusy} onClick={() => setDeleteTarget(null)}>
+            取消
+          </button>
+          <button type="button" className="danger-btn" disabled={dialogBusy} onClick={() => void confirmDelete()}>
+            {dialogBusy ? "删除中…" : "确认删除"}
+          </button>
+        </div>
+      </Dialog>
+
+      {/* 重置密码对话框 */}
+      <Dialog
+        title="重置密码"
+        open={resetTarget !== null}
+        onClose={() => {
+          if (!dialogBusy) {
+            setResetTarget(null);
+            setNewPassword("");
+          }
+        }}
+      >
+        <form onSubmit={submitReset}>
+          <p>
+            为用户 <strong>{resetTarget?.username}</strong> 设置新密码（至少 8 位）。
+          </p>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="新密码（至少 8 位）"
+            aria-label="新密码"
+            autoComplete="new-password"
+            autoFocus
+          />
+          <div className="m3-dialog-actions">
+            <button
+              type="button"
+              className="ghost-btn"
+              disabled={dialogBusy}
+              onClick={() => {
+                setResetTarget(null);
+                setNewPassword("");
+              }}
+            >
+              取消
+            </button>
+            <button type="submit" className="primary-btn" disabled={dialogBusy || newPassword.length < 8}>
+              {dialogBusy ? "重置中…" : "确认重置"}
+            </button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }
