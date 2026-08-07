@@ -116,7 +116,12 @@ export default function App() {
             type="button"
             className="nav-link"
             onClick={() => {
-              void api.logout().finally(() => navigate("/login"));
+              void api.logout().finally(() => {
+                // 登出后必须重置鉴权状态（me() 守卫已不再重新探测）
+                setAuthed(false);
+                setRole(null);
+                navigate("/login");
+              });
             }}
           >
             <span dangerouslySetInnerHTML={{ __html: icon("logout", 16) }} />
