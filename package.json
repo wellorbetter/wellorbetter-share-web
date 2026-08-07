@@ -1,0 +1,12 @@
+{
+  "name": "wellorbetter-share-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "wellorbetterai.com 前端：文件分享应用 + 落地页（React + Vite + Cloudflare Workers Static Assets）",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "engines": { "node": ">=20" }
+}

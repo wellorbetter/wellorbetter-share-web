@@ -1,0 +1,17 @@
+name = "wellorbetter-landing"
+main = "src/worker.ts"
+compatibility_date = "2024-08-01"
+
+# 根域 + www 都指向落地页（与 share.wellorbetterai.com 分开）
+routes = [
+  { pattern = "wellorbetterai.com", custom_domain = true },
+  { pattern = "www.wellorbetterai.com", custom_domain = true },
+]
+
+# 前端静态资源（apps/landing 构建产物）
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[observability]
+enabled = true

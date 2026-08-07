@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.dev.vars
+.wrangler/
+*.log
+.DS_Store
+
+# 调试/凭据类产物（严禁入库）
+*.cookies.txt
+.smoke-*
+preload.cjs
+.sigcheck.cjs
+.sigcheck.*
