@@ -66,3 +66,18 @@ export const DENIED_CONTENT_TYPES = new Set([
 
 /** 分页大小 */
 export const PAGE_SIZE = 20;
+
+/** 1 GB（字节） */
+export const GB = 1024 * 1024 * 1024;
+
+/** 配额默认值（个人空间管理，后台可在 /api/admin/settings 调整） */
+export const DEFAULT_STORAGE_QUOTA_BYTES = 2 * GB; // 每个用户默认存储 2GB
+export const GLOBAL_STORAGE_QUOTA_BYTES = 10 * GB; // 全局存储 10GB（R2 免费额度内）
+export const DEFAULT_DOWNLOAD_QUOTA_BYTES = 20 * GB; // 每个用户每月对外下载 20GB
+export const GLOBAL_DOWNLOAD_QUOTA_BYTES = 100 * GB; // 全局每月对外下载 100GB
+export const DEFAULT_MAX_PENDING_UPLOADS = 5; // 每用户同时进行中的上传任务上限
+
+/** 配额输入校验范围 */
+export const QUOTA_MIN_BYTES = 64 * 1024 * 1024; // 64MB 下限，防误配 0
+export const QUOTA_MAX_BYTES = 1024 * GB; // 1TB 上限
+export const MAX_PENDING_UPLOADS_MAX = 50; // 进行中上传任务上限

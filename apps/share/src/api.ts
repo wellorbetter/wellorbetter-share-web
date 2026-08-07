@@ -1,6 +1,9 @@
 /** Worker API 客户端（同源，开发环境走 vite proxy） */
 import type {
   AdminCreateUserInput,
+  AdminUpdateSettingsInput,
+  AdminUpdateUserInput,
+  AdminUsageResponse,
   AdminUsersResponse,
   LoginInput,
   LoginResponse,
@@ -76,6 +79,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ password }),
     }),
+  adminUsage: () => request<AdminUsageResponse>("/api/admin/usage"),
+  adminUpdateSettings: (input: AdminUpdateSettingsInput) =>
+    request<{ ok: true; settings: AdminUsageResponse["settings"] }>("/api/admin/settings", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  adminUpdateUser: (id: string, input: AdminUpdateUserInput) =>
+    request<{ ok: true }>(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
 };
 
 /** 复制文本（剪贴板 API + 降级） */

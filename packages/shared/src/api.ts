@@ -31,11 +31,71 @@ export interface AdminUserItem {
   username: string;
   role: UserRole;
   createdAt: number;
+  /** 存储配额（字节；null = 使用全局默认值） */
+  storageQuotaBytes: number | null;
+  /** 每月对外下载配额（字节；null = 使用全局默认值） */
+  downloadQuotaBytes: number | null;
 }
 
 /** 管理员：用户列表响应 */
 export interface AdminUsersResponse {
   items: AdminUserItem[];
+}
+
+/** 全局配额设置（后台可调） */
+export interface AdminSettings {
+  /** 新用户默认存储配额（字节，0 = 不允许上传） */
+  defaultStorageQuotaBytes: number;
+  /** 全局存储配额（字节） */
+  globalStorageQuotaBytes: number;
+  /** 每个用户每月对外下载配额（字节） */
+  defaultDownloadQuotaBytes: number;
+  /** 全局每月对外下载配额（字节） */
+  globalDownloadQuotaBytes: number;
+  /** 每用户同时进行中的上传任务上限 */
+  maxPendingUploads: number;
+}
+
+/** 用量与配额响应 */
+export interface AdminUsageResponse {
+  /** 统计月份 'YYYY-MM'（下载用量按月累计） */
+  month: string;
+  users: Array<
+    AdminUserItem & {
+      storageUsedBytes: number;
+      downloadUsedBytes: number;
+      /** 生效配额（用户显式值或全局默认） */
+      effectiveStorageQuotaBytes: number;
+      effectiveDownloadQuotaBytes: number;
+    }
+  >;
+  global: {
+    storageUsedBytes: number;
+    storageQuotaBytes: number;
+    downloadUsedBytes: number;
+    downloadQuotaBytes: number;
+    pendingUploads: number;
+    activeShares: number;
+    totalShares: number;
+  };
+  settings: AdminSettings;
+}
+
+/** 管理员：更新单个用户配额/角色请求 */
+export interface AdminUpdateUserInput {
+  /** null = 回落到全局默认值 */
+  storageQuotaBytes?: number | null;
+  downloadQuotaBytes?: number | null;
+  role?: UserRole;
+}
+
+/** 管理员：更新全局设置请求（只传需要修改的字段） */
+export interface AdminUpdateSettingsInput {
+  defaultStorageQuotaBytes?: number;
+  globalStorageQuotaBytes?: number;
+  defaultDownloadQuotaBytes?: number;
+  globalDownloadQuotaBytes?: number;
+  maxPendingUploads?: number;
 }
 
 /** 管理员：创建用户请求 */

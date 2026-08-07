@@ -8,6 +8,7 @@ const LoginPage = lazy(() => import("./pages/Login.js").then((m) => ({ default: 
 const UploadPage = lazy(() => import("./pages/Upload.js").then((m) => ({ default: m.UploadPage })));
 const ManagePage = lazy(() => import("./pages/Manage.js").then((m) => ({ default: m.ManagePage })));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsers.js").then((m) => ({ default: m.AdminUsersPage })));
+const AdminUsagePage = lazy(() => import("./pages/AdminUsage.js").then((m) => ({ default: m.AdminUsagePage })));
 const DownloadPage = lazy(() => import("./pages/Download.js").then((m) => ({ default: m.DownloadPage })));
 
 export type Route =
@@ -15,6 +16,7 @@ export type Route =
   | { name: "upload" }
   | { name: "manage" }
   | { name: "admin-users" }
+  | { name: "admin-usage" }
   | { name: "download"; id: string };
 
 function parseRoute(path: string): Route {
@@ -23,6 +25,7 @@ function parseRoute(path: string): Route {
   if (path === "/upload") return { name: "upload" };
   if (path === "/manage") return { name: "manage" };
   if (path === "/admin/users") return { name: "admin-users" };
+  if (path === "/admin/usage") return { name: "admin-usage" };
   const m = path.match(/^\/f\/([^/]+)$/);
   if (m) return { name: "download", id: m[1]! };
   return { name: "upload" };
@@ -33,6 +36,7 @@ const ROUTE_TITLES: Record<Route["name"], string> = {
   upload: "上传 · wellorbetter 文件分享",
   manage: "我的分享 · wellorbetter 文件分享",
   "admin-users": "用户管理 · wellorbetter 文件分享",
+  "admin-usage": "用量与配额 · wellorbetter 文件分享",
   download: "文件分享 · wellorbetter",
 };
 
@@ -112,6 +116,16 @@ export default function App() {
               用户管理
             </button>
           )}
+          {role === "admin" && (
+            <button
+              type="button"
+              className={route.name === "admin-usage" ? "nav-link is-active" : "nav-link"}
+              onClick={() => navigate("/admin/usage")}
+            >
+              <span dangerouslySetInnerHTML={{ __html: icon("chart", 16) }} />
+              用量与配额
+            </button>
+          )}
           <button
             type="button"
             className="nav-link"
@@ -163,6 +177,12 @@ export default function App() {
             ) : route.name === "admin-users" ? (
               role === "admin" ? (
                 <AdminUsersPage />
+              ) : (
+                <ManagePage />
+              )
+            ) : route.name === "admin-usage" ? (
+              role === "admin" ? (
+                <AdminUsagePage />
               ) : (
                 <ManagePage />
               )
