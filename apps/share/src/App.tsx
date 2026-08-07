@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { icon } from "@wellorbetter/design";
 import { api, isWeChat } from "./api.js";
 import type { UserRole } from "@wellorbetter/shared";
@@ -41,9 +41,12 @@ export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
 
-  // 下载页是公开路由：跳过会话探测，减少一次网络请求（性能 H3）
+  // 会话探测只做一次（下载页是公开路由，跳过；登录后再由 onAuthed 刷新角色）。
+  // 原实现依赖 [route.name] 每次切路由都请求 /api/me 且存在竞态，改为 ref 守卫（性能 H3）
+  const meChecked = useRef(false);
   useEffect(() => {
-    if (route.name === "download") return;
+    if (route.name === "download" || meChecked.current) return;
+    meChecked.current = true;
     api
       .me()
       .then((res) => {
