@@ -9,7 +9,7 @@
  * Checks performed:
  *   1. No `@cloudflare/workers-types` in any app/package package.json
  *      (the static worker.ts only needs the ASSETS binding type inline).
- *   2. No `vitest` or `miniflare` in any package.json (API-side test tools).
+ *   2. No `miniflare` in any package.json (API-side test tool; vitest allowed for React tests).
  *   3. No `d1_databases`, `r2_buckets`, or `kv_namespaces` in any
  *      `wrangler.toml` under `apps/` (static assets only).
  *   4. No source references to `D1Database`, `R2Bucket`, `KVNamespace` types.
@@ -32,7 +32,6 @@ function relPath(absPath) {
 
 const FORBIDDEN_DEPS = [
   "@cloudflare/workers-types",
-  "vitest",
   "miniflare",
 ];
 
