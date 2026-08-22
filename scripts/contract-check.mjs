@@ -40,6 +40,7 @@ const apiFixture = resolve(
   __dirname,
   "../../wellorbetter-api/packages/shared/contract-fixture.json",
 );
+const apiRepoRoot = resolve(__dirname, "../../wellorbetter-api");
 
 function hashFile(path) {
   const content = readFileSync(path, "utf-8");
@@ -66,6 +67,13 @@ function pass(msg) {
 // ─── 1. Check ALL shared source files ──────────────────────────────
 
 console.log("── Shared source file hash check ──");
+
+if (!existsSync(apiRepoRoot)) {
+  console.log(
+    "⚠ wellorbetter-api not found — skipping contract check (expected in public CI; run locally for full check)",
+  );
+  process.exit(0);
+}
 
 const webFiles = readdirSync(webSharedDir).filter((f) => f.endsWith(".ts"));
 const apiFiles = readdirSync(apiSharedDir).filter((f) => f.endsWith(".ts"));
