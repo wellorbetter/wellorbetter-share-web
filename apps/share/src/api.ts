@@ -8,6 +8,8 @@ import type {
   LoginInput,
   LoginResponse,
   MeResponse,
+  RegisterInput,
+  RegisterResponse,
   ShareMetaResponse,
   ShareVerifyResponse,
   SharesListResponse,
@@ -31,7 +33,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     headers: init?.body ? { "Content-Type": "application/json" } : undefined,
@@ -56,6 +58,10 @@ export const api = {
   login: (username: string, password: string) => {
     const input: LoginInput = { username, password };
     return request<LoginResponse>("/api/auth/login", { method: "POST", body: JSON.stringify(input) });
+  },
+  register: (username: string, password: string) => {
+    const input: RegisterInput = { username, password };
+    return request<RegisterResponse>("/api/auth/register", { method: "POST", body: JSON.stringify(input) });
   },
   logout: () => request<LoginResponse>("/api/auth/logout", { method: "POST" }),
   me: () => request<MeResponse>("/api/me"),

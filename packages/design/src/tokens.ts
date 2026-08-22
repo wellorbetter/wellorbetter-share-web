@@ -28,6 +28,29 @@ export const cssVariables = `
   --success: #2E7D32;
   --success-container: #B7F0B0;
   --on-success-container: #002107;
+  --warning: #7A5900;
+  --warning-container: #FFDF9A;
+  --on-warning-container: #241A00;
+
+  /* Project 状态色（ui-system.md：draft=neutral / pending=warning /
+     published=success / hidden·removed=error-muted / unreviewed=warning） */
+  --status-draft: var(--on-surface-variant);
+  --status-draft-bg: var(--surface-container-high);
+  --status-pending: var(--warning);
+  --status-pending-bg: var(--warning-container);
+  --status-published: var(--success);
+  --status-published-bg: var(--success-container);
+  --status-hidden: #9A4A47;
+  --status-hidden-bg: var(--error-container);
+  --status-removed: #9A4A47;
+  --status-removed-bg: var(--error-container);
+  --status-unreviewed: var(--warning);
+  --status-unreviewed-bg: var(--warning-container);
+
+  /* 可替换背景（token 替换，不绑定版权图片；默认无背景图） */
+  --app-bg-image: none;
+  --app-bg-attachment: fixed;
+  --app-bg-opacity: 1;
 
   /* 表面与层级 */
   --bg: #F9F9FF;
@@ -87,6 +110,26 @@ export const cssVariables = `
     --success: #81C995;
     --success-container: #27632E;
     --on-success-container: #B7F0B0;
+    --warning: #ECC248;
+    --warning-container: #584400;
+    --on-warning-container: #FFDF9A;
+
+    --status-draft: var(--on-surface-variant);
+    --status-draft-bg: var(--surface-container-high);
+    --status-pending: var(--warning);
+    --status-pending-bg: var(--warning-container);
+    --status-published: var(--success);
+    --status-published-bg: var(--success-container);
+    --status-hidden: #E8B1AE;
+    --status-hidden-bg: #5D1315;
+    --status-removed: #E8B1AE;
+    --status-removed-bg: #5D1315;
+    --status-unreviewed: var(--warning);
+    --status-unreviewed-bg: var(--warning-container);
+
+    --app-bg-image: none;
+    --app-bg-attachment: fixed;
+    --app-bg-opacity: 1;
 
     --bg: #111318;
     --surface: #191C21;
@@ -132,6 +175,24 @@ export const cssVariables = `
   --success: #81C995;
   --success-container: #27632E;
   --on-success-container: #B7F0B0;
+  --warning: #ECC248;
+  --warning-container: #584400;
+  --on-warning-container: #FFDF9A;
+  --status-draft: var(--on-surface-variant);
+  --status-draft-bg: var(--surface-container-high);
+  --status-pending: var(--warning);
+  --status-pending-bg: var(--warning-container);
+  --status-published: var(--success);
+  --status-published-bg: var(--success-container);
+  --status-hidden: #E8B1AE;
+  --status-hidden-bg: #5D1315;
+  --status-removed: #E8B1AE;
+  --status-removed-bg: #5D1315;
+  --status-unreviewed: var(--warning);
+  --status-unreviewed-bg: var(--warning-container);
+  --app-bg-image: none;
+  --app-bg-attachment: fixed;
+  --app-bg-opacity: 1;
   --bg: #111318;
   --surface: #191C21;
   --surface-container-low: #191C21;
@@ -171,6 +232,24 @@ export const cssVariables = `
   --success: #2E7D32;
   --success-container: #B7F0B0;
   --on-success-container: #002107;
+  --warning: #7A5900;
+  --warning-container: #FFDF9A;
+  --on-warning-container: #241A00;
+  --status-draft: var(--on-surface-variant);
+  --status-draft-bg: var(--surface-container-high);
+  --status-pending: var(--warning);
+  --status-pending-bg: var(--warning-container);
+  --status-published: var(--success);
+  --status-published-bg: var(--success-container);
+  --status-hidden: #9A4A47;
+  --status-hidden-bg: var(--error-container);
+  --status-removed: #9A4A47;
+  --status-removed-bg: var(--error-container);
+  --status-unreviewed: var(--warning);
+  --status-unreviewed-bg: var(--warning-container);
+  --app-bg-image: none;
+  --app-bg-attachment: fixed;
+  --app-bg-opacity: 1;
   --bg: #F9F9FF;
   --surface: #F3F3FA;
   --surface-container-low: #F3F3FA;

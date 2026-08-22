@@ -4,7 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="wellorbetter 文件分享" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' https: data: blob:; media-src 'self' https:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; frame-src https:; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'self'"
+    />
     <title>wellorbetter 文件分享</title>
+    <script>
+      // Apply stored theme/background before first paint (no flash).
+      (function () {
+        try {
+          var t = localStorage.getItem("wb-theme");
+          var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var attr = t === "light" || t === "dark" ? t : dark ? "dark" : "light";
+          document.documentElement.dataset.theme = attr;
+          var bg = localStorage.getItem("wb-bg");
+          var map = {
+            aurora:
+              "radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 60%),radial-gradient(1000px 500px at 110% 20%, color-mix(in srgb, var(--secondary) 18%, transparent), transparent 55%)",
+            mesh:
+              "radial-gradient(600px 400px at 85% 15%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 55%),radial-gradient(700px 500px at 15% 85%, color-mix(in srgb, var(--success) 10%, transparent), transparent 55%),radial-gradient(500px 400px at 60% 110%, color-mix(in srgb, var(--warning) 10%, transparent), transparent 50%)",
+            veil: "linear-gradient(180deg, color-mix(in srgb, var(--primary) 8%, transparent), transparent 40%)"
+          };
+          if (bg && map[bg]) document.documentElement.style.setProperty("--app-bg-image", map[bg]);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

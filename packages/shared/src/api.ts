@@ -19,6 +19,15 @@ export interface LoginResponse {
   ok: true;
 }
 
+export interface RegisterInput {
+  username: string;
+  password: string;
+}
+
+export interface RegisterResponse {
+  ok: true;
+}
+
 /** 当前会话 */
 export interface MeResponse {
   ok: true;

@@ -1,0 +1,400 @@
+{
+  "_meta": {
+    "generator": "generate-fixture.mjs",
+    "version": "0.1.0",
+    "sourceHashes": {
+      "project.ts": "979b97ffc5510538e228608aa1914e1a2b8ced886ed71972de47d905b9e87433",
+      "project-policy.ts": "421453f4d7a6f04dfafb18d30cfef126dbe38b4213c628622a8cdb1058f360a1"
+    }
+  },
+  "project": {
+    "types": {
+      "ProjectStatus": [
+        "draft",
+        "hidden",
+        "pending_media",
+        "published",
+        "rejected",
+        "removed"
+      ],
+      "ModerationStatus": [
+        "dismissed",
+        "pending",
+        "reviewed"
+      ],
+      "MediaType": [
+        "cover",
+        "image",
+        "video"
+      ],
+      "FeedType": [
+        "author",
+        "latest",
+        "random",
+        "tag"
+      ],
+      "ReportReason": [
+        "copyright",
+        "malware",
+        "nsfw",
+        "other",
+        "spam"
+      ],
+      "ExperienceUrlPolicy": [
+        "external",
+        "iframe",
+        "none"
+      ],
+      "ReleaseKind": [
+        "apk_external",
+        "none",
+        "web"
+      ],
+      "ModerationAction": [
+        "dismiss_report",
+        "hide",
+        "remove",
+        "resolve_report",
+        "restore",
+        "unhide"
+      ],
+      "AuditAction": [
+        "media_completed",
+        "media_deleted",
+        "media_requested",
+        "moderation_action",
+        "project_created",
+        "project_hidden",
+        "project_published",
+        "project_removed",
+        "project_restored",
+        "project_unhidden",
+        "project_updated",
+        "report_dismissed",
+        "report_resolved",
+        "report_submitted",
+        "settings_updated",
+        "user_quota_updated",
+        "user_role_updated"
+      ],
+      "AuditTargetType": [
+        "media",
+        "project",
+        "report",
+        "settings",
+        "user"
+      ],
+      "ProjectErrorCode": "(typeof PROJECT_ERROR_CODES)[keyof typeof PROJECT_ERROR_CODES]",
+      "AdminAction": [
+        "adjust_global_settings",
+        "adjust_user_quota",
+        "approve_project",
+        "delete_user",
+        "dismiss_report",
+        "hide_project",
+        "reject_project",
+        "remove_project",
+        "reset_user_password",
+        "resolve_report",
+        "restore_project",
+        "unhide_project"
+      ],
+      "AdminDenialReason": [
+        "action_requires_confirmation",
+        "already_resolved",
+        "cannot_operate_on_self",
+        "confirmation_mismatch",
+        "invalid_transition",
+        "last_admin_protection",
+        "not_admin",
+        "target_not_found"
+      ]
+    },
+    "constants": {
+      "PROJECT_FEED_DEFAULT_LIMIT": 20,
+      "PROJECT_FEED_MAX_LIMIT": 50,
+      "PROJECT_MAX_IMAGES": 12,
+      "PROJECT_MAX_VIDEOS": 2,
+      "PROJECT_MAX_COVERS": 1,
+      "PROJECT_MAX_IMAGE_BYTES": 10485760,
+      "PROJECT_MAX_VIDEO_BYTES": 52428800,
+      "PROJECT_MAX_VIDEO_DURATION_SECONDS": 60,
+      "PROJECT_MAX_TEXT_BYTES": 32768,
+      "VIBE_NOTE_MAX_BYTES": 4096,
+      "PROJECT_METADATA_MAX_BYTES": 65536,
+      "REPORT_RATE_LIMIT_PER_MIN": 5,
+      "PUBLISH_RATE_LIMIT_PER_HOUR": 10,
+      "MEDIA_REQUEST_RATE_LIMIT_PER_HOUR": 30,
+      "PROJECT_TITLE_MAX_LENGTH": 120,
+      "PROJECT_SUMMARY_MAX_LENGTH": 500,
+      "PROJECT_MAX_TAGS": 8,
+      "PROJECT_TAG_MAX_LENGTH": 32,
+      "REPORT_DESCRIPTION_MAX_BYTES": 2048,
+      "MEDIA_PRESIGNED_URL_TTL_SECONDS": 300,
+      "MODERATION_REASON_MAX_LENGTH": 1000,
+      "PROJECT_ERROR_CODES": {
+        "UNAUTHORIZED": "unauthorized",
+        "FORBIDDEN": "forbidden",
+        "NOT_FOUND": "not_found",
+        "VALIDATION_FAILED": "validation_failed",
+        "URL_NOT_ALLOWED": "url_not_allowed",
+        "MEDIA_TOO_LARGE": "media_too_large",
+        "QUOTA_EXCEEDED": "quota_exceeded",
+        "RATE_LIMITED": "rate_limited",
+        "UNREVIEWED_RELEASE": "unreviewed_release",
+        "MODERATION_REQUIRED": "moderation_required",
+        "INVALID_STATE": "invalid_state",
+        "INTERNAL": "internal",
+        "DUPLICATE_REPORT": "duplicate_report",
+        "PROJECT_NOT_PUBLISHABLE": "project_not_publishable",
+        "MEDIA_NOT_FOUND": "media_not_found",
+        "CURSOR_EXPIRED": "cursor_expired",
+        "CURSOR_INVALID": "cursor_invalid",
+        "LEGACY_UPLOAD_FROZEN": "legacy_upload_frozen"
+      },
+      "ALLOWED_RELEASE_KINDS": [
+        "apk_external",
+        "none",
+        "web"
+      ],
+      "PROJECT_BLOCKED_EXTENSIONS": [
+        "bat",
+        "cmd",
+        "dll",
+        "exe",
+        "msi",
+        "scr"
+      ]
+    },
+    "interfaces": {
+      "ProjectCard": [
+        "id",
+        "slug",
+        "title",
+        "summary",
+        "authorId",
+        "authorName",
+        "coverUrl",
+        "tags",
+        "status",
+        "publishedAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "ProjectVersion": [
+        "id",
+        "projectId",
+        "versionTag",
+        "experienceUrl",
+        "experienceUrlPolicy",
+        "releaseUrl",
+        "releaseKind",
+        "isUnreviewed",
+        "changelog",
+        "createdAt"
+      ],
+      "ProjectMedia": [
+        "id",
+        "projectId",
+        "type",
+        "url",
+        "thumbnailUrl",
+        "posterUrl",
+        "width",
+        "height",
+        "fileSize",
+        "contentType",
+        "position",
+        "createdAt"
+      ],
+      "VibeNote": [
+        "id",
+        "projectId",
+        "content",
+        "createdAt",
+        "updatedAt"
+      ],
+      "ProjectDetail": [
+        "card",
+        "versions",
+        "media",
+        "vibeNotes"
+      ],
+      "ProjectDraft": [
+        "id",
+        "slug",
+        "title",
+        "summary",
+        "status",
+        "updatedAt"
+      ],
+      "Report": [
+        "id",
+        "projectId",
+        "reason",
+        "description",
+        "reporterId",
+        "moderationStatus",
+        "createdAt",
+        "resolvedAt"
+      ],
+      "CreateProjectInput": [
+        "title",
+        "summary"
+      ],
+      "UpdateProjectInput": [
+        "title",
+        "summary"
+      ],
+      "PublishProjectResponse": [
+        "ok",
+        "project"
+      ],
+      "MediaDimensions": [
+        "width",
+        "height"
+      ],
+      "ProjectMediaRequestInput": [
+        "type",
+        "contentType",
+        "fileSize",
+        "dimensions"
+      ],
+      "ProjectMediaRequestResponse": [
+        "mediaId",
+        "presignedUrl",
+        "expiresAt"
+      ],
+      "ProjectMediaCompleteInput": [
+        "mediaId"
+      ],
+      "ProjectMediaCompleteResponse": [
+        "ok",
+        "media"
+      ],
+      "CreateReportInput": [
+        "reason",
+        "description"
+      ],
+      "ModerationEvent": [
+        "id",
+        "projectId",
+        "reportId",
+        "action",
+        "adminId",
+        "reason",
+        "createdAt"
+      ],
+      "ModerationRequestInput": [
+        "action",
+        "reason"
+      ],
+      "AdminModerationResponse": [
+        "ok",
+        "event"
+      ],
+      "AuditEvent": [
+        "id",
+        "action",
+        "actorId",
+        "targetType",
+        "targetId",
+        "metadata",
+        "createdAt"
+      ],
+      "AdminProjectListItem": [
+        "id",
+        "slug",
+        "title",
+        "summary",
+        "authorId",
+        "authorName",
+        "coverUrl",
+        "tags",
+        "status",
+        "publishedAt",
+        "createdAt",
+        "updatedAt",
+        "reportCount",
+        "mediaCount"
+      ],
+      "AdminReportListItem": [
+        "id",
+        "projectId",
+        "projectTitle",
+        "projectSlug",
+        "reason",
+        "description",
+        "reporterId",
+        "moderationStatus",
+        "createdAt",
+        "resolvedAt"
+      ],
+      "ProjectApiError": [
+        "error",
+        "code",
+        "message",
+        "details",
+        "requestId"
+      ],
+      "UnreviewedWarning": [
+        "isUnreviewed",
+        "message",
+        "releaseKind"
+      ],
+      "FeedCursorResponse": [
+        "items",
+        "nextCursor"
+      ],
+      "PaginatedResponse": [
+        "items",
+        "total",
+        "page",
+        "pageSize"
+      ]
+    }
+  },
+  "policy": {
+    "types": {
+      "UrlRejectReason": [
+        "host_blocked",
+        "host_not_allowed",
+        "invalid_url",
+        "localhost",
+        "private_ip",
+        "scheme_not_allowed",
+        "too_many_redirects",
+        "url_too_long"
+      ]
+    },
+    "constants": {
+      "PROJECT_MEDIA_BUDGET": {
+        "maxImages": 12,
+        "maxVideos": 2,
+        "maxCovers": 1
+      }
+    },
+    "interfaces": {
+      "CursorPayload": [
+        "v",
+        "iat",
+        "sortKey",
+        "tiebreaker"
+      ]
+    },
+    "functions": [
+      "clampFeedLimit",
+      "decodeCursor",
+      "encodeCursor",
+      "isAllowedImageType",
+      "isAllowedVideoType",
+      "isDeniedMediaExtension",
+      "isDirectUploadAllowed",
+      "isPermanentlyBlockedExtension",
+      "isPrivateIp",
+      "isPrivateIpv4",
+      "isPrivateIpv6",
+      "validateUrlSyntax"
+    ]
+  }
+}

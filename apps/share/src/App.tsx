@@ -1,49 +1,78 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { icon } from "@wellorbetter/design";
 import { api, isWeChat } from "./api.js";
-import type { UserRole } from "@wellorbetter/shared";
+import type { MeResponse } from "@wellorbetter/shared";
+import { ThemeToggle } from "./components/ThemeToggle.js";
+import { AvatarDropdown } from "./components/AvatarDropdown.js";
 
 // 路由级懒加载：首屏只下载当前页面（性能 H4）
+const HomePage = lazy(() => import("./pages/Home.js").then((m) => ({ default: m.HomePage })));
 const LoginPage = lazy(() => import("./pages/Login.js").then((m) => ({ default: m.LoginPage })));
 const UploadPage = lazy(() => import("./pages/Upload.js").then((m) => ({ default: m.UploadPage })));
 const ManagePage = lazy(() => import("./pages/Manage.js").then((m) => ({ default: m.ManagePage })));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsers.js").then((m) => ({ default: m.AdminUsersPage })));
 const AdminUsagePage = lazy(() => import("./pages/AdminUsage.js").then((m) => ({ default: m.AdminUsagePage })));
 const DownloadPage = lazy(() => import("./pages/Download.js").then((m) => ({ default: m.DownloadPage })));
+const ProjectDetailPage = lazy(() => import("./pages/ProjectDetail.js").then((m) => ({ default: m.ProjectDetailPage })));
+const PublishPage = lazy(() => import("./pages/Publish.js").then((m) => ({ default: m.PublishPage })));
+const MyProjectsPage = lazy(() => import("./pages/MyProjects.js").then((m) => ({ default: m.MyProjectsPage })));
+const AdminProjectsPage = lazy(() => import("./pages/AdminProjects.js").then((m) => ({ default: m.AdminProjectsPage })));
+const SettingsPage = lazy(() => import("./pages/Settings.js").then((m) => ({ default: m.SettingsPage })));
 
 export type Route =
+  | { name: "home" }
   | { name: "login" }
   | { name: "upload" }
   | { name: "manage" }
   | { name: "admin-users" }
   | { name: "admin-usage" }
+  | { name: "admin-projects" }
+  | { name: "project-detail"; slug: string }
+  | { name: "publish"; editId?: string }
+  | { name: "my-projects" }
+  | { name: "settings" }
   | { name: "download"; id: string };
 
 function parseRoute(path: string): Route {
-  if (path === "/") return { name: "upload" };
+  if (path === "/" || path === "/home") return { name: "home" };
   if (path === "/login") return { name: "login" };
   if (path === "/upload") return { name: "upload" };
   if (path === "/manage") return { name: "manage" };
   if (path === "/admin/users") return { name: "admin-users" };
   if (path === "/admin/usage") return { name: "admin-usage" };
+  if (path === "/admin/projects") return { name: "admin-projects" };
+  if (path === "/my-projects") return { name: "my-projects" };
+  if (path === "/settings") return { name: "settings" };
+  if (path === "/publish") return { name: "publish" };
+  const editMatch = path.match(/^\/publish\/([^/]+)$/);
+  if (editMatch) return { name: "publish", editId: editMatch[1]! };
+  const pMatch = path.match(/^\/p\/([^/]+)$/);
+  if (pMatch) return { name: "project-detail", slug: pMatch[1]! };
   const m = path.match(/^\/f\/([^/]+)$/);
   if (m) return { name: "download", id: m[1]! };
-  return { name: "upload" };
+  return { name: "home" };
 }
 
 const ROUTE_TITLES: Record<Route["name"], string> = {
+  home: "发现 · wellorbetter",
   login: "登录 · wellorbetter 文件分享",
   upload: "上传 · wellorbetter 文件分享",
   manage: "我的分享 · wellorbetter 文件分享",
   "admin-users": "用户管理 · wellorbetter 文件分享",
   "admin-usage": "用量与配额 · wellorbetter 文件分享",
+  "admin-projects": "作品与举报管理 · wellorbetter",
+  "project-detail": "作品 · wellorbetter",
+  publish: "发布作品 · wellorbetter",
+  "my-projects": "我的作品 · wellorbetter",
+  settings: "设置 · wellorbetter",
   download: "文件分享 · wellorbetter",
 };
 
 export default function App() {
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [meUser, setMeUser] = useState<MeResponse["user"] | null>(null);
+  const role = meUser?.role ?? null;
 
   // 会话探测只做一次（下载页是公开路由，跳过；登录后再由 onAuthed 刷新角色）。
   // 原实现依赖 [route.name] 每次切路由都请求 /api/me 且存在竞态，改为 ref 守卫（性能 H3）
@@ -54,7 +83,7 @@ export default function App() {
     api
       .me()
       .then((res) => {
-        setRole(res.user.role);
+        setMeUser(res.user);
         setAuthed(true);
       })
       .catch(() => setAuthed(false));
@@ -76,7 +105,9 @@ export default function App() {
   }, []);
 
   const isDownload = route.name === "download";
-  const needsAuth = !isDownload && authed === false;
+  // Home (discovery feed), project detail and download pages are public.
+  const publicRoutes = isDownload || route.name === "home" || route.name === "project-detail";
+  const needsAuth = !publicRoutes && authed === false;
 
   useEffect(() => {
     if (needsAuth) navigate("/login");
@@ -84,65 +115,36 @@ export default function App() {
 
   const header = !isDownload ? (
     <header className="app-nav">
-      <button type="button" className="nav-brand" onClick={() => navigate("/upload")}>
+      <button type="button" className="nav-brand" onClick={() => navigate("/")}>
         <span dangerouslySetInnerHTML={{ __html: icon("logo", 22) }} />
-        <span>wellorbetter 文件分享</span>
+        <span>wellorbetter</span>
       </button>
-      {authed && (
-        <nav className="nav-links">
-          <button
-            type="button"
-            className={route.name === "upload" ? "nav-link is-active" : "nav-link"}
-            onClick={() => navigate("/upload")}
-          >
-            <span dangerouslySetInnerHTML={{ __html: icon("upload", 16) }} />
-            上传
-          </button>
-          <button
-            type="button"
-            className={route.name === "manage" ? "nav-link is-active" : "nav-link"}
-            onClick={() => navigate("/manage")}
-          >
-            <span dangerouslySetInnerHTML={{ __html: icon("list", 16) }} />
-            我的分享
-          </button>
-          {role === "admin" && (
-            <button
-              type="button"
-              className={route.name === "admin-users" ? "nav-link is-active" : "nav-link"}
-              onClick={() => navigate("/admin/users")}
-            >
-              <span dangerouslySetInnerHTML={{ __html: icon("users", 16) }} />
-              用户管理
-            </button>
-          )}
-          {role === "admin" && (
-            <button
-              type="button"
-              className={route.name === "admin-usage" ? "nav-link is-active" : "nav-link"}
-              onClick={() => navigate("/admin/usage")}
-            >
-              <span dangerouslySetInnerHTML={{ __html: icon("chart", 16) }} />
-              用量与配额
-            </button>
-          )}
-          <button
-            type="button"
-            className="nav-link"
-            onClick={() => {
+      <div className="nav-controls">
+        {authed && meUser ? (
+          <AvatarDropdown
+            user={{ name: meUser.username, username: meUser.username, role: meUser.role }}
+            onNavigate={navigate}
+            onSignOut={() => {
               void api.logout().finally(() => {
-                // 登出后必须重置鉴权状态（me() 守卫已不再重新探测）
                 setAuthed(false);
-                setRole(null);
+                setMeUser(null);
                 navigate("/login");
               });
             }}
+          />
+        ) : authed === false ? (
+          <button
+            type="button"
+            className="nav-link"
+            onClick={() => navigate("/login")}
           >
-            <span dangerouslySetInnerHTML={{ __html: icon("logout", 16) }} />
-            登出
+            登录
           </button>
-        </nav>
-      )}
+        ) : (
+          <span className="avatar-placeholder" aria-hidden="true" />
+        )}
+        <ThemeToggle />
+      </div>
     </header>
   ) : null;
 
@@ -152,6 +154,39 @@ export default function App() {
         <Suspense fallback={<div className="loading-block">加载中…</div>}>
           <DownloadPage id={route.id} />
         </Suspense>
+      </div>
+    );
+  }
+
+  // Home page is public — no auth required
+  if (route.name === "home") {
+    return (
+      <div className="app-shell">
+        {header}
+        <main className="app-main app-main--wide">
+          <Suspense fallback={<div className="loading-block">加载中…</div>}>
+            <HomePage
+              isAuthed={authed === true}
+              onPublish={() => navigate("/publish")}
+              onLogin={() => navigate("/login")}
+              onOpenProject={(slug) => navigate(`/p/${slug}`)}
+            />
+          </Suspense>
+        </main>
+      </div>
+    );
+  }
+
+  // Project detail is public — no auth required
+  if (route.name === "project-detail") {
+    return (
+      <div className="app-shell">
+        {header}
+        <main className="app-main app-main--wide">
+          <Suspense fallback={<div className="loading-block">加载中…</div>}>
+            <ProjectDetailPage slug={route.slug} onBack={() => navigate("/")} />
+          </Suspense>
+        </main>
       </div>
     );
   }
@@ -168,12 +203,19 @@ export default function App() {
               <LoginPage
                 onAuthed={() => {
                   setAuthed(true);
-                  void api.me().then((res) => setRole(res.user.role)).catch(() => setRole(null));
-                  navigate("/upload");
+                  void api.me().then((res) => setMeUser(res.user)).catch(() => setMeUser(null));
+                  navigate("/");
                 }}
               />
             ) : route.name === "upload" ? (
               <UploadPage />
+            ) : route.name === "publish" ? (
+              <PublishPage editId={route.editId} onPublished={() => navigate("/my-projects")} />
+            ) : route.name === "my-projects" ? (
+              <MyProjectsPage
+                onEdit={(id) => navigate(`/publish/${id}`)}
+                onView={(slug) => navigate(`/p/${slug}`)}
+              />
             ) : route.name === "admin-users" ? (
               role === "admin" ? (
                 <AdminUsersPage />
@@ -186,6 +228,14 @@ export default function App() {
               ) : (
                 <ManagePage />
               )
+            ) : route.name === "admin-projects" ? (
+              role === "admin" ? (
+                <AdminProjectsPage />
+              ) : (
+                <ManagePage />
+              )
+            ) : route.name === "settings" ? (
+              <SettingsPage onNavigate={(path) => navigate(path)} />
             ) : (
               <ManagePage />
             )}
