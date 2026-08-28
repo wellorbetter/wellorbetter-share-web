@@ -26,8 +26,35 @@ export type PortfolioContribution = {
   updatedAt: string;
 };
 
+export type PortfolioActivity = {
+  period: { from: string; to: string };
+  years: number[];
+  totalContributions: number;
+  restrictedContributions: number;
+  commits: number;
+  issues: number;
+  pullRequests: number;
+  reviews: number;
+  repositories: {
+    commits: number;
+    issues: number;
+    pullRequests: number;
+    reviews: number;
+  };
+  calendar: Array<{
+    date: string;
+    count: number;
+    level: string;
+  }>;
+  topCommitRepositories: Array<{
+    repository: string;
+    url: string;
+    commits: number;
+  }>;
+};
+
 export type DeveloperPortfolio = {
-  version: 1;
+  version: 2;
   profile: {
     login: string;
     name: string | null;
@@ -52,6 +79,7 @@ export type DeveloperPortfolio = {
   languages: Array<{ name: string; repos: number }>;
   projects: PortfolioProject[];
   contributions: PortfolioContribution[];
+  activity: PortfolioActivity | null;
   generatedAt: string;
 };
 
@@ -78,5 +106,7 @@ export async function fetchPortfolio(username: string, signal?: AbortSignal): Pr
     }
     throw new Error(message);
   }
-  return response.json() as Promise<DeveloperPortfolio>;
+  const body = (await response.json()) as DeveloperPortfolio;
+  if (body.version !== 2) throw new Error("Portfolio API version mismatch");
+  return body;
 }
