@@ -4,6 +4,7 @@ import { themeStyle } from "@wellorbetter/design";
 import AppService from "./AppService.js";
 import PortfolioPage from "./PortfolioPage.js";
 import "./styles.css";
+import "./portfolio.css";
 
 const styleEl = document.createElement("style");
 styleEl.textContent = themeStyle;
