@@ -85,7 +85,9 @@ export type DeveloperPortfolio = {
 
 type ApiError = { error?: { code?: string; message?: string } };
 
-const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ?? "https://api.wellorbetterai.com";
+// Production defaults to the landing Worker's same-origin BFF. VITE_API_BASE remains
+// available for local integration or a future centralized API deployment.
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ?? "";
 
 export function portfolioPath(username: string): string {
   return `/u/${encodeURIComponent(username)}`;
