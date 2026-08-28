@@ -30,7 +30,7 @@ export default function AppService() {
           />
           <button type="submit">Build →</button>
         </form>
-        <a href="/u/wellorbetter">See mine ↗</a>
+        <a href="/u/wellorbetter?view=recruiter">Recruiter view ↗</a>
       </aside>
     </>
   );
