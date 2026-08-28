@@ -5,6 +5,7 @@ import AppService from "./AppService.js";
 import PortfolioPage from "./PortfolioPage.js";
 import "./styles.css";
 import "./portfolio.css";
+import "./portfolio-v2.css";
 
 const styleEl = document.createElement("style");
 styleEl.textContent = themeStyle;
