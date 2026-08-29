@@ -1,16 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { DeveloperPortfolio, PortfolioContribution, PortfolioProject } from "./portfolio.js";
 import type { SiteGeneration, SiteSectionType, SiteSpec } from "./site-spec.js";
+import { resolvedPresentation } from "./presentation.js";
 
-type Props = {
-  generation: SiteGeneration;
-  spec?: SiteSpec;
-  studio?: boolean;
-};
+type Props = { generation: SiteGeneration; spec?: SiteSpec; studio?: boolean };
 
 const copy = {
-  en: { source: "View source", live: "Live", stars: "stars", merged: "MERGED", open: "OPEN", closed: "CLOSED", profile: "GitHub profile", website: "Website", activityFallback: "Activity details become richer when the server has GitHub GraphQL access.", contributions: "contributions", commits: "commits", issues: "issues", reviews: "reviews", repos: "repos", built: "Generated from public GitHub evidence" },
-  zh: { source: "查看源码", live: "在线", stars: "stars", merged: "已合并", open: "进行中", closed: "已关闭", profile: "GitHub 主页", website: "个人网站", activityFallback: "服务端配置 GitHub GraphQL 后会展示更完整的活动信息。", contributions: "贡献", commits: "commits", issues: "issues", reviews: "reviews", repos: "仓库", built: "根据公开 GitHub 证据自动生成" },
+  en: { source: "View source", live: "Live", stars: "stars", merged: "MERGED", open: "OPEN", closed: "CLOSED", profile: "GitHub profile", website: "Website", activityFallback: "Activity details become richer when the server has GitHub GraphQL access.", contributions: "contributions", commits: "commits", issues: "issues", reviews: "reviews", repos: "repos", built: "Generated from public GitHub evidence", next: "Scroll for next", project: "Project" },
+  zh: { source: "查看源码", live: "在线", stars: "stars", merged: "已合并", open: "进行中", closed: "已关闭", profile: "GitHub 主页", website: "个人网站", activityFallback: "服务端配置 GitHub GraphQL 后会展示更完整的活动信息。", contributions: "贡献", commits: "commits", issues: "issues", reviews: "reviews", repos: "仓库", built: "根据公开 GitHub 证据自动生成", next: "继续向下", project: "项目" },
 } as const;
 
 function projectByName(portfolio: DeveloperPortfolio, fullName: string): PortfolioProject | undefined { return portfolio.projects.find((item) => item.fullName === fullName); }
@@ -53,8 +50,24 @@ function renderSection(type: SiteSectionType, spec: SiteSpec, portfolio: Develop
   return <Contact spec={spec} portfolio={portfolio} title={title} subtitle={subtitle} />;
 }
 
+function FocusProject({ spec, portfolio, index }: { spec: SiteSpec; portfolio: DeveloperPortfolio; index: number }) {
+  const entry = spec.projects[index];
+  if (!entry) return null;
+  const project = projectByName(portfolio, entry.fullName);
+  if (!project) return null;
+  const t = copy[spec.locale];
+  return <section className="focus-panel focus-project" id={`project-${index + 1}`}><div className="focus-count">{String(index + 2).padStart(2, "0")} / {String(spec.projects.length + 1).padStart(2, "0")}</div><div className="focus-project-content"><div className="focus-project-copy"><span>{t.project} · {project.language ?? "GitHub"}</span><h2>{entry.title}</h2><p>{entry.summary}</p><div className="generated-tags">{entry.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="focus-project-stats"><span>★ {project.stars}</span><span>⑂ {project.forks}</span></div><div className="generated-actions"><a className="generated-primary" href={project.url} target="_blank" rel="noreferrer">{t.source} ↗</a>{project.homepage ? <a className="generated-secondary" href={project.homepage} target="_blank" rel="noreferrer">{t.live} ↗</a> : null}</div></div><div className="focus-project-visual"><div className="focus-project-monogram">{entry.title.slice(0, 2).toUpperCase()}</div><small>{entry.fullName}</small></div></div><div className="focus-next">{t.next}<span>↓</span></div></section>;
+}
+
+function FocusRenderer({ spec, portfolio }: { spec: SiteSpec; portfolio: DeveloperPortfolio }) {
+  const t = copy[spec.locale];
+  const trailing = spec.sections.filter((section) => section.visible && !["hero", "projects"].includes(section.type));
+  return <main className="focus-shell"><section className="focus-panel focus-intro"><div className="focus-intro-center"><span className="generated-eyebrow">{spec.identity.eyebrow}</span><h1>{spec.identity.displayName}</h1><h2>{spec.identity.role}</h2><p>{spec.identity.summary}</p><div className="focus-links"><a href={portfolio.profile.githubUrl} target="_blank" rel="noreferrer">GitHub ↗</a>{portfolio.profile.website ? <a href={portfolio.profile.website} target="_blank" rel="noreferrer">{t.website} ↗</a> : null}</div><div className="focus-count">01 / {String(spec.projects.length + 1).padStart(2, "0")}</div></div><div className="focus-next">{t.next}<span>↓</span></div></section>{spec.projects.map((_, index) => <FocusProject key={spec.projects[index]?.fullName ?? index} spec={spec} portfolio={portfolio} index={index} />)}{trailing.map((section) => <section className="focus-panel focus-support" key={section.id}><div>{renderSection(section.type, spec, portfolio, section.title, section.subtitle)}</div></section>)}</main>;
+}
+
 export default function SiteRenderer({ generation, spec: override, studio = false }: Props) {
   const spec = override ?? generation.spec; const portfolio = generation.portfolio; const t = copy[spec.locale];
+  const presentation = resolvedPresentation(spec);
   const style = { "--site-accent-name": spec.visual.accent } as CSSProperties;
-  return <div className={`generated-site mood-${spec.visual.mood} density-${spec.visual.density} accent-${spec.visual.accent} surface-${spec.visual.surface}${studio ? " is-studio-preview" : ""}`} style={style}><header className="generated-nav"><a className="generated-brand" href="#hero"><span>{spec.identity.displayName}</span><small>{spec.identity.role}</small></a><nav>{spec.navigation.map((item) => <a key={`${item.label}-${item.target}`} href={item.target}>{item.label}</a>)}</nav><a className="generated-github" href={portfolio.profile.githubUrl} target="_blank" rel="noreferrer">GitHub ↗</a></header><main className="generated-shell"><Hero spec={spec} portfolio={portfolio} />{spec.sections.filter((section) => section.visible && section.type !== "hero").map((section) => <div key={section.id}>{renderSection(section.type, spec, portfolio, section.title, section.subtitle)}</div>)}</main><footer className="generated-footer"><span>{t.built}</span><a href="/">Personal Site Agent</a></footer></div>;
+  return <div className={`generated-site presentation-${presentation} mood-${spec.visual.mood} density-${spec.visual.density} accent-${spec.visual.accent} surface-${spec.visual.surface}${studio ? " is-studio-preview" : ""}`} style={style}><header className="generated-nav"><a className="generated-brand" href="#hero"><span>{spec.identity.displayName}</span><small>{spec.identity.role}</small></a><nav>{presentation === "flow" ? spec.navigation.map((item) => <a key={`${item.label}-${item.target}`} href={item.target}>{item.label}</a>) : null}</nav><a className="generated-github" href={portfolio.profile.githubUrl} target="_blank" rel="noreferrer">GitHub ↗</a></header>{presentation === "focus" ? <FocusRenderer spec={spec} portfolio={portfolio} /> : <main className="generated-shell"><Hero spec={spec} portfolio={portfolio} />{spec.sections.filter((section) => section.visible && section.type !== "hero").map((section) => <div key={section.id}>{renderSection(section.type, spec, portfolio, section.title, section.subtitle)}</div>)}</main>}<footer className="generated-footer"><span>{t.built}</span><a href="/">Personal Site Agent</a></footer></div>;
 }
