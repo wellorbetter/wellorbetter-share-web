@@ -10,6 +10,7 @@ import "./styles.css";
 import "./portfolio.css";
 import "./portfolio-v2.css";
 import "./site-agent.css";
+import "./presentation.css";
 
 const styleEl = document.createElement("style");
 styleEl.textContent = themeStyle;
