@@ -1,0 +1,9 @@
+# Optional GitHub authentication for higher API limits and GraphQL activity.
+GITHUB_TOKEN=
+
+# Optional OpenAI-compatible model. Public paid AI stays disabled unless
+# AGENT_PUBLIC_AI_ENABLED is explicitly set to 1 in the Worker environment.
+AGENT_PUBLIC_AI_ENABLED=0
+AGENT_MODEL_API_KEY=
+AGENT_MODEL_BASE_URL=https://api.openai.com/v1
+AGENT_MODEL=gpt-5-mini
