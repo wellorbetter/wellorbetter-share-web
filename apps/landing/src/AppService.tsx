@@ -1,37 +1,26 @@
-import { FormEvent, useState } from "react";
-import App from "./App.js";
-import { portfolioPath } from "./portfolio.js";
+import { useMemo, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import { studioPath } from "./site-client.js";
+
+const intents = [
+  { id: "general", label: "General", value: "Build a strong general-purpose personal developer website" },
+  { id: "job", label: "Job search", value: "Build a recruiter-friendly site that highlights the strongest engineering evidence" },
+  { id: "oss", label: "Open source", value: "Make upstream open-source work and collaboration the center of the site" },
+  { id: "ai", label: "AI / Agents", value: "Highlight AI tooling, coding agents, developer tools, and related projects" },
+] as const;
 
 export default function AppService() {
   const [username, setUsername] = useState("");
+  const [intentId, setIntentId] = useState<(typeof intents)[number]["id"]>("general");
+  const [customIntent, setCustomIntent] = useState("");
+  const selectedIntent = useMemo(() => intents.find((item) => item.id === intentId)?.value ?? intents[0].value, [intentId]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const value = username.trim();
+    const value = username.trim().replace(/^https?:\/\/(?:www\.)?github\.com\//i, "").split("/")[0]?.trim().replace(/^@/, "") ?? "";
     if (!value) return;
-    window.location.assign(portfolioPath(value));
+    window.location.assign(studioPath(value, customIntent.trim() || selectedIntent));
   }
 
-  return (
-    <>
-      <App />
-      <aside className="portfolio-launcher" aria-label="GitHub portfolio generator">
-        <div className="portfolio-launcher-copy">
-          <span className="portfolio-launcher-kicker">FOR EVERY DEVELOPER</span>
-          <strong>Turn GitHub into a living portfolio.</strong>
-        </div>
-        <form onSubmit={submit}>
-          <span>@</span>
-          <input
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder="github username"
-            aria-label="GitHub username"
-          />
-          <button type="submit">Build →</button>
-        </form>
-        <a href="/u/wellorbetter?view=recruiter">Recruiter view ↗</a>
-      </aside>
-    </>
-  );
+  return <div className="agent-home"><header className="agent-home-nav"><a href="/" className="agent-home-brand"><span className="agent-home-mark">◩</span><span>Personal Site Agent</span><i>β</i></a><nav><a href="#how">How it works</a><a href="#principles">Principles</a><a href="/u/wellorbetter">Live example</a><a href="https://github.com/wellorbetter/wellorbetter-share-web" target="_blank" rel="noreferrer">GitHub ↗</a></nav></header><main><section className="agent-home-hero"><div className="agent-home-hero-copy"><div className="agent-home-kicker"><i /> GITHUB → AGENT → PERSONAL SITE</div><h1>Drop your GitHub.<br /><em>Your site builds itself.</em></h1><p>An agent reads what you actually build, chooses what matters, writes the story, and turns it into a personal website you can keep editing in plain language.</p><form className="agent-build-form" onSubmit={submit}><div className="agent-github-input"><span>github.com/</span><input autoFocus value={username} onChange={(event: ChangeEvent<HTMLInputElement>) => setUsername(event.target.value)} placeholder="your-username" aria-label="GitHub username" /></div><button type="submit">Build my site <span>→</span></button></form><div className="agent-intent-picker"><span>Optimize for</span>{intents.map((item) => <button className={intentId === item.id ? "is-active" : ""} type="button" key={item.id} onClick={() => { setIntentId(item.id); setCustomIntent(""); }}>{item.label}</button>)}</div><input className="agent-custom-intent" value={customIntent} onChange={(event: ChangeEvent<HTMLInputElement>) => setCustomIntent(event.target.value)} placeholder="Or describe your goal: e.g. Android systems role, minimal dark site…" /><div className="agent-home-trust"><span>✓ Public GitHub only</span><span>✓ No login required to try</span><span>✓ Editable with natural language</span></div></div><div className="agent-home-demo" aria-label="Product preview"><div className="agent-demo-window"><div className="agent-demo-chrome"><i /><i /><i /><span>personal-site-agent / studio</span></div><div className="agent-demo-body"><div className="agent-demo-preview"><span className="demo-label">LIVE PREVIEW</span><div className="demo-site-nav"><b>wellorbetter</b><span>Work&nbsp;&nbsp; Open Source&nbsp;&nbsp; About</span></div><div className="demo-site-hero"><small>ANDROID / SYSTEMS × DEVELOPER TOOLS</small><h2>Building useful things<br />around systems.</h2><p>Products, tools, and open-source work shaped from real engineering problems.</p><div><span>42 source repos</span><span>18 upstream PRs</span></div></div><div className="demo-projects"><div><small>RUST · FLUTTER</small><b>TimeTrace</b><p>Local-first activity tracking and journal.</p></div><div><small>RUST · CLI</small><b>cxs</b><p>Find the Codex session doing a job.</p></div></div></div><aside className="agent-demo-chat"><div><span>A</span><p>I read your GitHub and built a first version.</p></div><div className="is-user"><span>YOU</span><p>Put TimeTrace first. Make it darker and more technical.</p></div><div><span>A</span><p>Done. I also kept the strongest upstream contributions visible.</p></div><div className="demo-chat-input">Tell me what to change… <b>↑</b></div></aside></div></div><div className="agent-demo-callout callout-one">UNDERSTANDS<br /><b>what you build</b></div><div className="agent-demo-callout callout-two">CURATES<br /><b>what matters</b></div><div className="agent-demo-callout callout-three">EDITS<br /><b>in plain language</b></div></div></section><section id="how" className="agent-home-section agent-how"><div className="agent-section-title"><span>HOW IT WORKS</span><h2>Not a theme picker.<br />An editorial workflow.</h2><p>The renderer stays deterministic. The agent decides what the page should say, show, and emphasize.</p></div><div className="agent-step-grid">{[["01","⌘","Read","Public repositories, languages, stars, descriptions, PRs, and upstream contributions."],["02","◎","Understand","Infer a truthful developer identity instead of stamping everyone “full-stack developer.”"],["03","◇","Curate","Choose representative projects and external contributions; suppress noisy GitHub history."],["04","✦","Compose","Generate a validated SiteSpec: hierarchy, copy, section order, and visual direction."],["05","↻","Edit","“Make it minimal.” “Focus on Android.” “Hide this project.” The page updates without a CMS."]].map(([index, icon, title, body]) => <article key={index}><span>{index}</span><i>{icon}</i><h3>{title}</h3><p>{body}</p></article>)}</div></section><section id="principles" className="agent-home-section agent-principles"><div className="agent-section-title"><span>PRODUCT PRINCIPLES</span><h2>Agentic where judgment helps.<br />Deterministic where truth matters.</h2></div><div className="agent-principle-list"><div><b>01</b><h3>No hallucinated work.</h3><p>Projects and PR references are validated against the GitHub snapshot before rendering.</p></div><div><b>02</b><h3>No arbitrary generated React.</h3><p>The agent outputs a strict SiteSpec. A stable renderer owns accessibility, responsive behavior, and interaction.</p></div><div><b>03</b><h3>Works without a model key.</h3><p>The public product has a deterministic agent fallback; a server-side model upgrades curation and free-form editing when enabled.</p></div><div><b>04</b><h3>The site stays current.</h3><p>Public pages re-read GitHub through a cached server-side BFF instead of freezing into a one-time export.</p></div></div></section><section className="agent-home-cta"><span>YOUR GITHUB IS ALREADY THE INPUT.</span><h2>Build the site from the work<br />you've already done.</h2><form onSubmit={submit}><div><span>@</span><input value={username} onChange={(event: ChangeEvent<HTMLInputElement>) => setUsername(event.target.value)} placeholder="github username" /></div><button type="submit">Start with GitHub →</button></form><a href="/u/wellorbetter">See a generated example ↗</a></section></main><footer className="agent-home-footer"><a href="/">Personal Site Agent <i>β</i></a><span>Public GitHub → validated SiteSpec → personal website.</span><a href="https://github.com/wellorbetter/wellorbetter-share-web" target="_blank" rel="noreferrer">Open source ↗</a></footer></div>;
 }
