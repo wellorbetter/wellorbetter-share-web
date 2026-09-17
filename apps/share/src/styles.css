@@ -38,7 +38,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #E5E5E5;
+  background: var(--surface-container-highest);
 }
 
 /* 外观控制（主题切换 + 背景预设，T306） */
@@ -578,7 +578,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--scrim);
   animation: m3-fade 150ms ease;
 }
 .m3-dialog {
@@ -699,15 +699,16 @@
 .feed-card {
   margin-bottom: 0;
   height: auto;
-  background: var(--surface-container-low, #ffffff);
-  border: none;
-  border-radius: 8px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--elevation-1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .feed-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: var(--primary);
+  box-shadow: var(--elevation-2);
   transform: translateY(-2px);
 }
 .feed-card-cover {
@@ -741,7 +742,7 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 1.3;
-  color: #333333;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -754,7 +755,7 @@
   gap: 7px;
   margin: 8px 0;
   font-size: 13px;
-  color: #666666;
+  color: var(--text-muted);
 }
 .feed-card-avatar {
   display: inline-flex;
@@ -816,13 +817,13 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-sm);
-  background: var(--surface-container-highest, var(--outline-variant));
+  background: var(--surface-container-highest);
   margin-bottom: 12px;
 }
 .feed-skeleton-line {
   height: 12px;
   border-radius: 6px;
-  background: var(--surface-container-highest, var(--outline-variant));
+  background: var(--surface-container-highest);
   margin-bottom: 8px;
 }
 .feed-skeleton-line--short {
@@ -873,6 +874,26 @@
 @media (max-width: 640px) {
   .admin-create { grid-template-columns: 1fr; }
   .app-nav { padding: 10px 16px; }
+}
+
+/* 触摸目标 ≥44px。只在触摸设备和窄屏生效：在桌面上把 25px 高的分段控件
+   撑到 44px 会把整条头部顶起来，而 44px 这条规则本来就是给手指用的。
+   pointer:coarse 覆盖平板和手机（不管视口多宽），max-width 那半条是为了
+   能在 375px 下用无头浏览器量到 —— 只写 pointer:coarse 的话验证不了。 */
+@media (max-width: 640px), (pointer: coarse) {
+  .segment,
+  .bg-select select {
+    min-height: 44px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .nav-brand,
+  .nav-link,
+  .ghost-btn {
+    min-height: 44px;
+  }
+  /* 分段控件被撑高后，胶囊内边距要跟着，否则激活块贴边 */
+  .segmented { padding: 3px; }
 }
 
 /* Reduced motion — disable skeleton pulse and spinner */
@@ -949,7 +970,7 @@
   padding: 10px 12px;
   border-radius: var(--radius-xs);
   background: var(--warning-container);
-  color: var(--on-warning-container, #241A00);
+  color: var(--on-warning-container);
   font-size: 13px;
 }
 .project-release-link { display: inline-block; text-decoration: none; }
