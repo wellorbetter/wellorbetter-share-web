@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>wellorbetter — 落地页改版 (paper-and-ink editorial)</title>
+    <meta name="theme-color" content="#f7f4ef" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="../../design-systems/wellorbetter-brand/tokens/colors_and_type.css" />
+    <script>
+      // Restore an explicit choice before first paint. When nothing is stored
+      // we deliberately leave data-theme UNSET so the tokens file's
+      // prefers-color-scheme block is the no-JS / first-visit default. Setting
+      // it here unconditionally is what made that block dead code.
+      try {
+        var saved = localStorage.getItem("wob-theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch (e) {
+        /* private mode — fall through to the media query */
+      }
+    </script>
+    <style>
+      /* ====================================================================
+         Landing — wellorbetter-brand
+         Semantic tokens and named type roles only. No raw --ink-*/--paper-*,
+         no raw --step-*, no magic letter-spacing, no hardcoded px sizes.
+         ==================================================================== */
+
+      body {
+        position: relative;
+      }
+
+      .shell {
+        position: relative;
+        z-index: 1;
+        width: min(1180px, 100% - 2 * var(--space-roomy));
+        margin-inline: auto;
+      }
+
+      /* ---- nav ---- */
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: color-mix(in oklab, var(--surface-page) 86%, transparent);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .nav-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-base) var(--space-roomy);
+        min-height: 64px;
+        padding: var(--space-tight) 0;
+      }
+
+      .wordmark {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        font-family: var(--h3-family);
+        font-size: var(--lead-size);
+        font-weight: var(--h1-weight);
+        letter-spacing: var(--h1-tracking);
+        font-variation-settings: "SOFT" var(--display-soft), "WONK" var(--display-wonk);
+        color: var(--text-primary);
+        text-decoration: none;
+        margin-right: auto;
+      }
+
+      .wordmark::after {
+        content: ".";
+        color: var(--accent);
+      }
+
+      .nav-links {
+        display: flex;
+        gap: var(--space-base);
+      }
+
+      .nav-links a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 var(--space-tight);
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+
+      .nav-links a:hover {
+        color: var(--accent);
+      }
+
+      .nav-tools {
+        display: flex;
+        gap: var(--space-tight);
+      }
+
+      .icon-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: grid;
+        place-items: center;
+        padding: 0 var(--space-snug);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-base);
+        background: var(--surface-raised);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition:
+          border-color var(--dur-quick) var(--ease-out),
+          color var(--dur-quick) var(--ease-out);
+      }
+
+      .icon-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .icon-btn:active {
+        background: var(--surface-pressed);
+        transform: scale(0.985);
+      }
+
+      /* ---- hero — asymmetric: copy left, generous right ---- */
+      .hero {
+        padding: var(--space-chapter) 0 var(--space-section);
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
+        gap: var(--space-loose);
+        align-items: end;
+      }
+
+      .hero h1 {
+        margin: var(--space-roomy) 0 0;
+        white-space: pre-line;
+        animation: settle var(--dur-slow) var(--ease-out) both;
+      }
+
+      @keyframes settle {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+      }
+
+      .hero-lead {
+        margin-top: var(--space-roomy);
+        font-size: var(--lead-size);
+        line-height: var(--lead-leading);
+        color: var(--text-secondary);
+        max-width: 46ch;
+      }
+
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-snug);
+        margin-top: var(--space-loose);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 var(--space-roomy);
+        border-radius: var(--radius-base);
+        font-family: var(--body-family);
+        font-size: var(--body-size);
+        font-weight: var(--w-medium);
+        text-decoration: none;
+        border: 1px solid transparent;
+        transition:
+          background var(--dur-quick) var(--ease-out),
+          border-color var(--dur-quick) var(--ease-out),
+          transform var(--dur-quick) var(--ease-out);
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: var(--text-on-accent);
+      }
+
+      .btn-primary:hover {
+        background: var(--link-hover);
+        color: var(--text-on-accent);
+      }
+
+      .btn-ghost {
+        border-color: var(--border-strong);
+        color: var(--text-primary);
+      }
+
+      .btn-ghost:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .btn:active {
+        transform: scale(0.985);
+      }
+
+      /* signal list — right column of hero */
+      .signal {
+        border-left: 1px solid var(--border-subtle);
+        padding-left: var(--space-roomy);
+      }
+
+      .signal ul {
+        list-style: none;
+        margin: var(--space-base) 0 0;
+        padding: 0;
+        display: grid;
+        gap: var(--space-snug);
+      }
+
+      .signal li {
+        display: grid;
+        gap: 2px;
+      }
+
+      .signal b {
+        font-family: var(--h3-family);
+        font-size: var(--body-size);
+        font-weight: var(--h3-weight);
+      }
+
+      /* stack strip */
+      .stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-tight) var(--space-base);
+        padding: var(--space-roomy) 0;
+        border-top: 1px solid var(--border-subtle);
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      /* ---- section scaffold ---- */
+      section {
+        padding: var(--space-chapter) 0;
+      }
+
+      .sec-head {
+        max-width: 62ch;
+        margin-bottom: var(--space-loose);
+      }
+
+      .sec-head h2 {
+        margin: var(--space-snug) 0 0;
+      }
+
+      .sec-head p {
+        margin-top: var(--space-base);
+        color: var(--text-secondary);
+      }
+
+      /* ---- projects ----
+         Spans must tile evenly or the grid ends in a void: three wide cards
+         plus three compact ones sums to 9 half-cells, which is odd. Two wide
+         (2+2) plus four compact (4) = 8 = four full rows. */
+      .projects {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-roomy);
+      }
+
+      .card {
+        grid-column: span 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface-raised);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: var(--shadow-low);
+        transition:
+          border-color var(--dur-base) var(--ease-out),
+          box-shadow var(--dur-base) var(--ease-out),
+          transform var(--dur-base) var(--ease-out);
+      }
+
+      .card:hover {
+        border-color: var(--accent);
+        box-shadow: var(--shadow-mid);
+        transform: translateY(-2px);
+      }
+
+      .card[data-size="wide"] {
+        grid-column: span 2;
+        flex-direction: row;
+      }
+
+      .card[data-size="wide"] .card-body {
+        flex: 0 0 42%;
+      }
+
+      /* Inherits .card-visual's 16/10 on purpose. An earlier `aspect-ratio:
+         auto; min-height: 260px` let each wide card size itself from whatever
+         its screenshot happened to be, so the two wide cards measured 510px
+         and 262px — the same slot, wildly different. Width-driven ratio makes
+         them agree. */
+      .card[data-size="wide"] .card-visual {
+        flex: 1;
+        border-top: 0;
+        border-left: 1px solid var(--border-subtle);
+      }
+
+      .card-body {
+        padding: var(--space-roomy);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-snug);
+      }
+
+      .card-top {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-snug);
+      }
+
+      .card-top h3 {
+        margin-right: auto;
+      }
+
+      .pill {
+        flex: none;
+        font-family: var(--eyebrow-family);
+        font-size: var(--eyebrow-size);
+        letter-spacing: var(--mono-tracking);
+        padding: 3px var(--space-tight);
+        border-radius: var(--radius-sm);
+      }
+
+      .pill[data-status="shipped"] {
+        color: var(--status-shipped);
+        background: var(--status-shipped-bg);
+      }
+
+      .pill[data-status="experiment"] {
+        color: var(--status-experiment);
+        background: var(--status-experiment-bg);
+      }
+
+      .pill[data-status="neutral"] {
+        color: var(--status-neutral);
+        background: var(--status-neutral-bg);
+      }
+
+      .card p:not(.mono) {
+        color: var(--text-secondary);
+        font-size: var(--body-size);
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-tight);
+        margin-top: auto;
+        padding-top: var(--space-snug);
+      }
+
+      .tags span {
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        padding: 2px var(--space-hair);
+      }
+
+      .card-visual {
+        border-top: 1px solid var(--border-subtle);
+        background: var(--surface-sunken);
+        aspect-ratio: 16 / 10;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .card-visual img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top left;
+        display: block;
+      }
+
+      /* Labeled placeholder — used where the project genuinely has no
+         screenshot (cxs, File Share). Never a hand-drawn fake UI. */
+      .ph {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        place-content: center;
+        gap: var(--space-tight);
+        text-align: center;
+        background-image: repeating-linear-gradient(
+          -45deg,
+          var(--border-subtle) 0 1px,
+          transparent 1px 9px
+        );
+      }
+
+      .ph code {
+        font-size: var(--eyebrow-size);
+        letter-spacing: var(--mono-tracking);
+        color: var(--text-tertiary);
+        background: var(--surface-page);
+        padding: var(--space-hair) var(--space-tight);
+        border-radius: var(--radius-sm);
+      }
+
+      /* ---- process — mono numerals, hairline rows ---- */
+      .steps {
+        border-top: 1px solid var(--border-strong);
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 5rem minmax(0, 14rem) minmax(0, 1fr);
+        gap: var(--space-roomy);
+        padding: var(--space-roomy) 0;
+        border-bottom: 1px solid var(--border-subtle);
+        align-items: baseline;
+      }
+
+      .step > i {
+        font-family: var(--eyebrow-family);
+        font-style: normal;
+        font-size: var(--lead-size);
+        letter-spacing: var(--mono-tracking);
+        color: var(--accent);
+      }
+
+      .step > b {
+        font-family: var(--h3-family);
+        font-size: var(--h3-size);
+        font-weight: var(--h3-weight);
+        letter-spacing: var(--h3-tracking);
+        font-variation-settings: "SOFT" var(--display-soft), "WONK" var(--display-wonk);
+      }
+
+      .step > p {
+        color: var(--text-secondary);
+      }
+
+      /* ---- footer ---- */
+      footer {
+        border-top: 1px solid var(--border-subtle);
+        padding: var(--space-loose) 0 var(--space-section);
+      }
+
+      footer p {
+        max-width: none;
+      }
+
+      /* ---- responsive ---- */
+      @media (max-width: 900px) {
+        .hero {
+          grid-template-columns: 1fr;
+          padding-top: var(--space-section);
+        }
+
+        .signal {
+          border-left: 0;
+          border-top: 1px solid var(--border-subtle);
+          padding-left: 0;
+          padding-top: var(--space-roomy);
+        }
+
+        .projects {
+          grid-template-columns: 1fr;
+        }
+
+        .card[data-size="wide"] {
+          grid-column: span 1;
+          flex-direction: column;
+        }
+
+        .card[data-size="wide"] .card-visual {
+          border-left: 0;
+          border-top: 1px solid var(--border-subtle);
+          min-height: 0;
+          aspect-ratio: 16 / 10;
+        }
+
+        .card[data-size="wide"] .card-body {
+          flex: 1;
+        }
+
+        .step {
+          grid-template-columns: 3rem 1fr;
+        }
+
+        .step > p {
+          grid-column: 2;
+        }
+
+        section {
+          padding: var(--space-section) 0;
+        }
+      }
+
+      /* The nav is the one row that cannot shrink: wordmark + three links +
+         two 44px buttons exceeds 560px of min-content. Below that the section
+         links drop — both targets remain reachable by scrolling. */
+      @media (max-width: 560px) {
+        .nav-links {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="grain">
+    <nav class="nav">
+      <div class="shell nav-inner">
+        <a class="wordmark" href="#">wellorbetter</a>
+        <div class="nav-links mono">
+          <a href="#projects" data-zh="项目" data-en="Projects">项目</a>
+          <a href="#process" data-zh="做法" data-en="Process">做法</a>
+          <a href="https://github.com/wellorbetter" lang="en">GitHub</a>
+        </div>
+        <div class="nav-tools mono">
+          <button class="icon-btn" id="locale" type="button" aria-label="Switch language">EN</button>
+          <button class="icon-btn" id="theme" type="button" aria-pressed="false"></button>
+        </div>
+      </div>
+    </nav>
+
+    <header class="shell hero">
+      <div>
+        <p class="eyebrow" lang="en">VIBE CODING LAB · 2026</p>
+        <h1
+          data-zh="把脑子里的小想法，&#10;做成真的能用的工具。"
+          data-en="Small ideas.&#10;Real tools. Shipped."
+        >把脑子里的小想法，
+做成真的能用的工具。</h1>
+        <p
+          class="hero-lead"
+          data-zh="不追求完美开局。先解决一个烦人的问题，再把原型一路打磨到能下载、能运行、能复用。"
+          data-en="I start with an annoying problem, prototype fast, then keep polishing until the thing is actually useful, runnable, and reusable."
+        >不追求完美开局。先解决一个烦人的问题，再把原型一路打磨到能下载、能运行、能复用。</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#projects" data-zh="看最近作品" data-en="See recent work">看最近作品</a>
+          <a class="btn btn-ghost" href="https://github.com/wellorbetter" data-zh="逛 GitHub" data-en="Explore GitHub">逛 GitHub</a>
+        </div>
+      </div>
+
+      <aside class="signal">
+        <p class="eyebrow" data-zh="最近在做" data-en="Building lately">最近在做</p>
+        <ul>
+          <li><b>TimeTrace</b><small class="mono" data-zh="本地优先 · Windows" data-en="local-first · Windows">本地优先 · Windows</small></li>
+          <li><b>cxs</b><small class="mono" lang="en">Codex session CLI</small></li>
+          <li><b>Window Stats</b><small class="mono" lang="en">DeepSeek Harness plugin</small></li>
+        </ul>
+      </aside>
+    </header>
+
+    <div class="shell stack mono" lang="en">
+      <span>Rust</span><span>Flutter</span><span>React</span><span>TypeScript</span>
+      <span>AI Agents</span><span>Local-first</span><span>Open Source</span>
+    </div>
+
+    <main class="shell">
+      <section id="projects">
+        <div class="sec-head">
+          <p class="eyebrow" lang="en">RECENT SHIPS</p>
+          <h2 data-zh="不是 demo 墙，是我真的在用的东西。" data-en="Not a demo wall. Things I actually use.">不是 demo 墙，是我真的在用的东西。</h2>
+          <p data-zh="每个项目都从一个具体痛点开始。能开源的尽量开源，能本地跑的尽量不依赖云。" data-en="Each project starts from a concrete pain point. I keep it open source when I can, and local-first whenever that makes sense.">每个项目都从一个具体痛点开始。能开源的尽量开源，能本地跑的尽量不依赖云。</p>
+        </div>
+
+        <div class="projects">
+          <a class="card" data-size="wide" href="https://github.com/wellorbetter/timetrace">
+            <div class="card-body">
+              <div class="card-top">
+                <h3 lang="en">TimeTrace</h3>
+                <span class="pill" data-status="shipped" data-zh="已发布" data-en="Shipped">已发布</span>
+              </div>
+              <p class="mono" data-zh="本地使用统计 + 日记" data-en="Local activity tracking + journal">本地使用统计 + 日记</p>
+              <p data-zh="Rust 核心 + Flutter UI。记录应用活跃时长、日历与回顾，所有数据只留在本机。" data-en="A Rust core with a Flutter UI for app activity, calendar views and recaps, with all personal data staying on-device.">Rust 核心 + Flutter UI。记录应用活跃时长、日历与回顾，所有数据只留在本机。</p>
+              <div class="tags mono" lang="en"><span>Rust</span><span>Flutter</span><span>SQLite</span></div>
+            </div>
+            <div class="card-visual">
+              <img
+                src="https://raw.githubusercontent.com/wellorbetter/timetrace/main/docs/screenshots/dashboard-bar.png"
+                alt="TimeTrace dashboard"
+                loading="lazy"
+                onerror="this.parentElement.innerHTML='&lt;div class=\'ph\'&gt;&lt;code&gt;screenshot unavailable&lt;/code&gt;&lt;/div&gt;'"
+              />
+            </div>
+          </a>
+
+          <a class="card" data-size="compact" href="https://github.com/wellorbetter/ai-process-manager">
+            <div class="card-body">
+              <div class="card-top">
+                <h3 data-zh="AI 进程管家" data-en="AI Process Manager">AI 进程管家</h3>
+                <span class="pill" data-status="shipped" data-zh="已发布" data-en="Shipped">已发布</span>
+              </div>
+              <p class="mono" data-zh="Coding agent 会话管理" data-en="Coding agent session manager">Coding agent 会话管理</p>
+              <p data-zh="把 Codex、Claude、Gemini、OpenCode 等 agent 的进程和本地会话整理成一个可读、可恢复的桌面工具。" data-en="A desktop view over Codex, Claude, Gemini, OpenCode and other coding-agent processes and their local sessions.">把 Codex、Claude、Gemini、OpenCode 等 agent 的进程和本地会话整理成一个可读、可恢复的桌面工具。</p>
+              <div class="tags mono" lang="en"><span>Rust</span><span>Flutter</span><span>Windows</span></div>
+            </div>
+            <div class="card-visual">
+              <img
+                src="https://raw.githubusercontent.com/wellorbetter/ai-process-manager/master/docs/screenshots/main.png"
+                alt="AI Process Manager"
+                loading="lazy"
+                onerror="this.parentElement.innerHTML='&lt;div class=\'ph\'&gt;&lt;code&gt;screenshot unavailable&lt;/code&gt;&lt;/div&gt;'"
+              />
+            </div>
+          </a>
+
+          <a class="card" data-size="compact" href="https://github.com/wellorbetter/amadeus-desktop">
+            <div class="card-body">
+              <div class="card-top">
+                <h3 lang="en">Amadeus</h3>
+                <span class="pill" data-status="experiment" data-zh="实验中" data-en="Experiment">实验中</span>
+              </div>
+              <p class="mono" data-zh="本地优先 AI 桌宠" data-en="Local-first AI desktop companion">本地优先 AI 桌宠</p>
+              <p data-zh="Flutter + Live2D 的 Windows AI 陪伴桌宠，可选择读取 TimeTrace 本地数据，让角色感知你正在做什么。" data-en="A Flutter + Live2D Windows companion that can optionally read local TimeTrace data and react to what is happening on your desktop.">Flutter + Live2D 的 Windows AI 陪伴桌宠，可选择读取 TimeTrace 本地数据，让角色感知你正在做什么。</p>
+              <div class="tags mono" lang="en"><span>Flutter</span><span>Live2D</span><span>AI</span></div>
+            </div>
+            <div class="card-visual">
+              <img
+                src="https://raw.githubusercontent.com/wellorbetter/amadeus-desktop/main/assets/docs/screenshots/pet.png"
+                alt="Amadeus desktop pet"
+                loading="lazy"
+                onerror="this.parentElement.innerHTML='&lt;div class=\'ph\'&gt;&lt;code&gt;screenshot unavailable&lt;/code&gt;&lt;/div&gt;'"
+              />
+            </div>
+          </a>
+
+          <a class="card" data-size="wide" href="https://github.com/wellorbetter/cxs">
+            <div class="card-body">
+              <div class="card-top">
+                <h3 lang="en">cxs</h3>
+                <span class="pill" data-status="experiment" lang="en">Alpha</span>
+              </div>
+              <p class="mono" data-zh="零 token 的 Codex 会话定位" data-en="Zero-token Codex session finder">零 token 的 Codex 会话定位</p>
+              <p data-zh="只读扫描本地 Codex 元数据，快速找到「刚才哪个会话在做这件事」，然后安全交给原生 Codex resume。" data-en="A read-only local CLI that finds the Codex session doing a specific job and delegates resume back to native Codex.">只读扫描本地 Codex 元数据，快速找到「刚才哪个会话在做这件事」，然后安全交给原生 Codex resume。</p>
+              <div class="tags mono" lang="en"><span>Rust</span><span>CLI</span><span>Local-only</span></div>
+            </div>
+            <div class="card-visual">
+              <div class="ph"><code lang="en">terminal capture — cxs</code></div>
+            </div>
+          </a>
+
+          <a class="card" data-size="compact" href="https://github.com/wellorbetter/dsh-plugin-window-stats">
+            <div class="card-body">
+              <div class="card-top">
+                <h3 lang="en">Window Stats</h3>
+                <span class="pill" data-status="neutral" lang="en">Plugin</span>
+              </div>
+              <p class="mono" data-zh="DeepSeek Harness 插件" data-en="DeepSeek Harness plugin">DeepSeek Harness 插件</p>
+              <p data-zh="跨会话查看运行状态、token、上下文占用、耗时和成本，再下钻到单个 session 的趋势和热力图。" data-en="Cross-session observability for progress, tokens, context pressure, duration and cost, with drill-down analytics for a single session.">跨会话查看运行状态、token、上下文占用、耗时和成本，再下钻到单个 session 的趋势和热力图。</p>
+              <div class="tags mono" lang="en"><span>TypeScript</span><span>Analytics</span><span>Plugin</span></div>
+            </div>
+            <div class="card-visual">
+              <img
+                src="https://raw.githubusercontent.com/wellorbetter/dsh-plugin-window-stats/main/assets/window-stats.png"
+                alt="Window Stats overview"
+                loading="lazy"
+                onerror="this.parentElement.innerHTML='&lt;div class=\'ph\'&gt;&lt;code&gt;screenshot unavailable&lt;/code&gt;&lt;/div&gt;'"
+              />
+            </div>
+          </a>
+
+          <a class="card" data-size="compact" href="https://share.wellorbetterai.com">
+            <div class="card-body">
+              <div class="card-top">
+                <h3 lang="en">File Share</h3>
+                <span class="pill" data-status="shipped" data-zh="在线" data-en="Live">在线</span>
+              </div>
+              <p class="mono" data-zh="作品发布与分享平台" data-en="Publishing and sharing platform">作品发布与分享平台</p>
+              <p data-zh="作品发布、发现流、项目详情、文件下载与后台管理，跑在 Cloudflare Workers + D1 + R2 上。" data-en="Publishing, a discovery feed, project pages, file downloads and an admin console — on Cloudflare Workers, D1 and R2.">作品发布、发现流、项目详情、文件下载与后台管理，跑在 Cloudflare Workers + D1 + R2 上。</p>
+              <div class="tags mono" lang="en"><span>React</span><span>Cloudflare</span><span>R2</span></div>
+            </div>
+            <div class="card-visual">
+              <div class="ph"><code lang="en">upload flow — share.wellorbetterai.com</code></div>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section id="process">
+        <div class="sec-head">
+          <p class="eyebrow" lang="en">HOW I BUILD</p>
+          <h2 data-zh="先做成，再做对，再做好看。" data-en="Make it work. Make it right. Then make it look good.">先做成，再做对，再做好看。</h2>
+        </div>
+
+        <div class="steps">
+          <div class="step">
+            <i>01</i>
+            <b data-zh="找痛点" data-en="Find the pain">找痛点</b>
+            <p data-zh="从自己每天会遇到的麻烦开始，不为「项目感」硬造需求。" data-en="Start from something that annoys me daily. Never invent a need just to have a project.">从自己每天会遇到的麻烦开始，不为「项目感」硬造需求。</p>
+          </div>
+          <div class="step">
+            <i>02</i>
+            <b data-zh="做原型" data-en="Prototype">做原型</b>
+            <p data-zh="把任务拆小，让 AI 快速覆盖样板代码，我负责约束、边界和取舍。" data-en="Split it small, let AI cover the boilerplate, and keep the constraints, edges and trade-offs for myself.">把任务拆小，让 AI 快速覆盖样板代码，我负责约束、边界和取舍。</p>
+          </div>
+          <div class="step">
+            <i>03</i>
+            <b data-zh="跑起来" data-en="Make it run">跑起来</b>
+            <p data-zh="能构建、能安装、能真实操作，比截图里的完成度更重要。" data-en="Builds, installs, and responds to real input — that beats looking finished in a screenshot.">能构建、能安装、能真实操作，比截图里的完成度更重要。</p>
+          </div>
+          <div class="step">
+            <i>04</i>
+            <b data-zh="继续磨" data-en="Keep polishing">继续磨</b>
+            <p data-zh="把卡顿、暗色、空状态、错误处理这些小问题一个个消掉。" data-en="Grind down the jank, the dark mode, the empty states, the error handling — one at a time.">把卡顿、暗色、空状态、错误处理这些小问题一个个消掉。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">
+        <p
+          class="mono"
+          data-zh="由 wellorbetter 打造 · 工具、实验，以及一些我希望它存在的东西。"
+          data-en="Built by wellorbetter · tools, experiments, and things I wanted to exist."
+        >由 wellorbetter 打造 · 工具、实验，以及一些我希望它存在的东西。</p>
+      </div>
+    </footer>
+
+    <script>
+      const root = document.documentElement;
+      const themeBtn = document.getElementById("theme");
+      const localeBtn = document.getElementById("locale");
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      const systemDark = matchMedia("(prefers-color-scheme: dark)");
+
+      let zh = true;
+      // null = no explicit choice yet, so the media query is in charge.
+      let choice = root.dataset.theme === "light" || root.dataset.theme === "dark"
+        ? root.dataset.theme
+        : null;
+
+      const effectiveDark = () =>
+        choice ? choice === "dark" : systemDark.matches;
+
+      const labels = {
+        zh: { toDark: "深色", toLight: "浅色", title: "切换深浅色" },
+        en: { toDark: "DARK", toLight: "LIGHT", title: "Toggle theme" },
+      };
+
+      // getComputedStyle preserves the authored colour space, so the resolved
+      // background comes back as oklch(...). theme-color parsing for browser
+      // chrome is less forgiving than CSS, so round-trip through a canvas to
+      // hand it a plain rgb().
+      const swatch = document.createElement("canvas");
+      swatch.width = swatch.height = 1;
+      const swatchCtx = swatch.getContext("2d");
+
+      function toRgb(color) {
+        swatchCtx.fillStyle = "#000";
+        swatchCtx.fillStyle = color;
+        swatchCtx.fillRect(0, 0, 1, 1);
+        const [r, g, b] = swatchCtx.getImageData(0, 0, 1, 1).data;
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+
+      // A text label, not ☀/☾ — U+2600 is in the Unicode emoji set and renders
+      // as a color emoji on Windows and Android, which the brand bans.
+      function paint() {
+        const dark = effectiveDark();
+        const l = labels[zh ? "zh" : "en"];
+        themeBtn.textContent = dark ? l.toLight : l.toDark;
+        themeBtn.title = l.title;
+        themeBtn.setAttribute("aria-pressed", String(dark));
+        // Read the resolved value rather than hardcoding a hex that can drift
+        // out of sync with --surface-page.
+        themeMeta.setAttribute(
+          "content",
+          toRgb(getComputedStyle(document.body).backgroundColor)
+        );
+      }
+
+      themeBtn.addEventListener("click", () => {
+        choice = effectiveDark() ? "light" : "dark";
+        root.dataset.theme = choice;
+        try {
+          localStorage.setItem("wob-theme", choice);
+        } catch (e) {
+          /* private mode — the choice just will not persist */
+        }
+        paint();
+      });
+
+      // Keep following the system while no explicit choice has been made.
+      systemDark.addEventListener("change", () => {
+        if (!choice) paint();
+      });
+
+      localeBtn.addEventListener("click", () => {
+        zh = !zh;
+        root.lang = zh ? "zh-CN" : "en";
+        localeBtn.textContent = zh ? "EN" : "中";
+        document.querySelectorAll("[data-zh][data-en]").forEach((el) => {
+          const next = zh ? el.dataset.zh : el.dataset.en;
+          if (!next) return;
+          el.textContent = next;
+          // Element-level lang has to move too, or .eyebrow:lang(zh) keeps
+          // matching after the switch and the tracking goes inconsistent.
+          el.lang = zh ? "zh" : "en";
+        });
+        paint();
+      });
+
+      paint();
+    </script>
+  </body>
+</html>
