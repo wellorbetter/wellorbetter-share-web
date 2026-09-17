@@ -11,7 +11,8 @@
     "contract-fixture": "node scripts/generate-fixture.mjs",
     "contract-fixture-verify": "node scripts/generate-fixture.mjs --verify",
     "contract-gate": "node scripts/contract-gate.mjs",
-    "boundary-check": "node scripts/boundary-check.mjs"
+    "boundary-check": "node scripts/boundary-check.mjs",
+    "css-check": "node scripts/css-check.mjs"
   },
   "engines": { "node": ">=20" }
 }
