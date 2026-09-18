@@ -1,39 +1,58 @@
+/* --lab-* 是这个应用的局部命名；值全部来自 @wellorbetter/design 注入的品牌
+   token（main.tsx 把 themeStyle 挂到 head，所以下面的 var() 一定解析得到）。
+   保留 --lab-* 这层名字而不是全局替换：styles.css 有 1000+ 行消费者，改名是
+   静默失效（var() 解析不到只会让声明无效，不报错）。
+
+   ── 为什么原来的写法是个坑 ──────────────────────────────────────────
+   原先这里是一整套硬编码 hex 的平行调色板，外加一份手写的
+   :root[data-theme="dark"] 副本。两份副本必须手动同步，而这个结构已经在
+   本项目咬过人一次：opendesign 的第一版同样是两份 dark 副本，它们漂移了。
+   现在明暗完全由品牌 token 的 light-dark() 承载，这里没有第二份可以漂移，
+   而且 --lab-* 会跟着 color-scheme 走 —— 不需要 JS、不需要点切换按钮，
+   跟随系统深色的访客首屏就是深色。
+
+   ── 紫色去哪了 ──────────────────────────────────────────────────────
+   #635bff / #8d87ff 是上一版品牌（Personal Site Agent）的紫色，和暖中性
+   调色板不是一个体系：压在纸底上读作一个外来的 SaaS 控件。现在整页只有
+   terracotta 一个强调色，加 moss 只做在线/已发布状态 —— 和 share 同一套纪律。 */
 :root {
-  --lab-bg: #f4f1e9;
-  --lab-bg-elevated: rgba(255, 255, 255, 0.72);
-  --lab-panel: rgba(255, 255, 255, 0.78);
-  --lab-panel-solid: #fbfaf6;
-  --lab-text: #171816;
-  --lab-muted: #68675f;
-  --lab-line: rgba(23, 24, 22, 0.12);
-  --lab-line-strong: rgba(23, 24, 22, 0.2);
-  --lab-accent: #635bff;
-  --lab-accent-strong: #5047ee;
-  --lab-accent-soft: #e9e6ff;
-  --lab-coral: #ff7a59;
-  --lab-lime: #c8ef6f;
-  --lab-shadow: 0 24px 70px rgba(37, 34, 28, 0.1);
-  --lab-shadow-hover: 0 28px 90px rgba(37, 34, 28, 0.16);
+  --lab-bg: var(--bg);
+  /* 这两个是玻璃层，半透明是有意的（要透出下面的径向光晕），所以不能直接用
+     不透明的 --surface，用 color-mix 保留原来的 72% / 78% 透明度。 */
+  --lab-bg-elevated: color-mix(in srgb, var(--surface) 72%, transparent);
+  --lab-panel: color-mix(in srgb, var(--surface) 78%, transparent);
+  --lab-panel-solid: var(--surface-container-low);
+  --lab-text: var(--text);
+  --lab-muted: var(--text-muted);
+  /* 两档描边的职责和品牌那边一致：variant 是发丝线/分隔线，
+     strong 是可交互控件的边界（品牌里那一档实测过 3:1）。 */
+  --lab-line: var(--outline-variant);
+  --lab-line-strong: var(--outline);
+  --lab-accent: var(--primary);
+  /* 品牌没有 hover 档的 CSS token（BRAND.accentHover 只存在于 JS 常量里）。
+     从 --primary 推导而不是再写一个 hex：浅色里压暗、深色里提亮，方向和
+     原来的 #635bff→#5047ee / #8d87ff→#a19cff 一致。 */
+  --lab-accent-strong: light-dark(
+    color-mix(in oklab, var(--primary) 86%, black),
+    color-mix(in oklab, var(--primary) 86%, white)
+  );
+  --lab-accent-soft: var(--primary-container);
+  /* coral 原本是第三个装饰色。品牌只给一个强调色，所以折进 terracotta：
+     它只有三个消费者（技术栈分隔符 + 两处背景光晕），没有语义。 */
+  --lab-coral: var(--primary);
+  /* lime → moss 不是配色，是语义对齐：--lab-lime 的三个消费者
+     .eyebrow-dot / .signal-live i / .project-status i 全是「在线 / 已发布」
+     指示器，而 moss 在这套品牌里的唯一职责恰好就是这个。 */
+  --lab-lime: var(--success);
+  /* 阴影几何留在本地：lab 的阴影比品牌 --elevation-3 大一号
+     （0 24px 70px vs 0 8px 28px），这是这个页面「大而柔」的质感，不是品牌违规。
+     颜色换成品牌的暖色阴影，并且 light-dark() 只包住颜色那一段 —— 和
+     tokens.ts 里 --elevation-* 同一个写法，因为 light-dark() 是颜色函数，
+     不能包整条 box-shadow。 */
+  --lab-shadow: 0 24px 70px light-dark(oklch(0.235 0.014 55 / 0.10), oklch(0.12 0.012 60 / 0.28));
+  --lab-shadow-hover: 0 28px 90px light-dark(oklch(0.235 0.014 55 / 0.16), oklch(0.12 0.012 60 / 0.42));
   --pointer-x: 50vw;
   --pointer-y: 20vh;
-}
-
-:root[data-theme="dark"] {
-  --lab-bg: #0d0e11;
-  --lab-bg-elevated: rgba(22, 23, 28, 0.72);
-  --lab-panel: rgba(23, 24, 29, 0.82);
-  --lab-panel-solid: #17181d;
-  --lab-text: #f4f1ea;
-  --lab-muted: #aaa79f;
-  --lab-line: rgba(244, 241, 234, 0.1);
-  --lab-line-strong: rgba(244, 241, 234, 0.18);
-  --lab-accent: #8d87ff;
-  --lab-accent-strong: #a19cff;
-  --lab-accent-soft: #29263f;
-  --lab-coral: #ff987e;
-  --lab-lime: #bfe86c;
-  --lab-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
-  --lab-shadow-hover: 0 34px 110px rgba(0, 0, 0, 0.42);
 }
 
 * {
@@ -284,7 +303,11 @@ a {
 }
 
 .primary-btn {
-  color: white;
+  /* 不写 white：强调色在深色模式下会抬亮到 oklch(0.70)，白字压在上面只有
+     2.78:1。--on-primary 就是为这件事存在的（浅色近白 / 深色近黑），
+     实测浅色 4.93:1、深色 6.69:1，两边都过 4.5。
+     这个问题在紫色时期就有：#8d87ff 上的白字约 3:1，同样不过。 */
+  color: var(--on-primary);
   background: var(--lab-accent);
   box-shadow: 0 12px 30px color-mix(in srgb, var(--lab-accent) 24%, transparent);
 }
