@@ -336,13 +336,13 @@
 .progress-bar {
   height: 6px;
   background: var(--surface-container-highest);
-  border-radius: var(--shape-pill);
+  border-radius: var(--shape-round);
   overflow: hidden;
 }
 .progress-fill {
   height: 100%;
   background: var(--primary);
-  border-radius: var(--shape-pill);
+  border-radius: var(--shape-round);
   transition: width 200ms ease;
 }
 .progress-text { margin: 8px 0 0; font-size: 13px; color: var(--text-muted); }
@@ -526,10 +526,10 @@
 .usage-bar {
   height: 6px;
   background: var(--surface-container-highest);
-  border-radius: var(--shape-pill);
+  border-radius: var(--shape-round);
   overflow: hidden;
 }
-.usage-bar-fill { height: 100%; background: var(--primary); border-radius: var(--shape-pill); transition: width 200ms; }
+.usage-bar-fill { height: 100%; background: var(--primary); border-radius: var(--shape-round); transition: width 200ms; }
 .usage-bar-fill.is-danger { background: var(--error); }
 
 .usage-settings {
