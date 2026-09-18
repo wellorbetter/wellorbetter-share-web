@@ -15,3 +15,8 @@
   Cache-Control: public, max-age=31536000, immutable
 /index.html
   Cache-Control: no-cache
+# theme-boot.js 跟 index.html 同一类：public/ 不哈希文件名，而这个文件是首屏
+# 主题的正确性依赖（改错了就是每次打开闪一下）。让它跟 index.html 一起
+# revalidate，不要落进默认的启发式缓存里。
+/theme-boot.js
+  Cache-Control: no-cache

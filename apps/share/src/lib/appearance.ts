@@ -6,8 +6,11 @@
  *   matching packages/design tokens).
  * - Background: replaceable app background via the `--app-bg-image` token.
  *   Presets are pure CSS gradients — no copyrighted assets. "none" resets.
- * - No-flash bootstrap: index.html inlines applyThemeFromStorage() before
- *   the bundle loads; this hook keeps React state in sync with it.
+ * - No-flash bootstrap: public/theme-boot.js runs applyThemeFromStorage() before
+ *   the bundle loads; this hook keeps React state in sync with it. It lives in
+ *   public/ rather than inline in index.html because the page declares
+ *   `script-src 'self'` with no 'unsafe-inline' — inlined, it was silently
+ *   blocked and never ran. See __tests__/t306-bootstrap-parity.test.ts.
  */
 
 export type ThemeChoice = "light" | "dark" | "system";
