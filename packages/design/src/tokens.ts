@@ -32,6 +32,29 @@ export const BRAND = {
 
 /** 完整 CSS 变量。一份调色板，light-dark() 承载明暗。 */
 export const cssVariables = `
+/* Fraunces，品牌指定的 editorial 衬线。只取 latin 子集：
+   latin-ext 另外 60KB 覆盖的是越南语和中欧变音符号，这个界面不会出现。
+   CJK 不走这个字体 —— Fraunces 没有汉字，中文标题会 fallback 到宋体，
+   所以这 67KB 只服务西文（产品名、wordmark）。
+   自托管而非 Google Fonts：国内访问 fonts.gstatic.com 本身就慢，而且
+   index.html 的 CSP 没有 font-src，同源字体走 default-src 'self' 直接放行，
+   换成跨域就得动 CSP。
+
+   文件名里的 48282a41 是内容 hash，手写的：public/ 是原样拷贝，Vite 不会
+   给这里的文件加 hash。有 hash 才能给 _headers 挂 immutable —— 以后重新
+   subset 就是一个新名字，而不是让老访客卡在一个没法 bust 的文件上一年。
+   换文件时这里和文件名要一起改，改漏了字体直接 404 回退 Georgia。 */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin.48282a41.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* color-scheme 是唯一的明暗开关：属性没写 = 跟随系统。
    只有访客真的点过切换才会写上 data-theme，所以首次访问和禁用 JS 时
    系统偏好仍然有效。 */
@@ -169,10 +192,15 @@ export const cssVariables = `
   --shape-round: 999px;
 
   /* ── 排版 ──────────────────────────────────────────────────────
-     --font-display 用 Georgia + 思源宋：真正的 editorial 衬线，且零网络
-     请求。品牌指定的 Fraunces 需要自托管字体子集（Google Fonts 从国内
-     访问本身就慢，而路由问题还没解决），等子集上了 R2 再换这一行。 */
-  --font-display: Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+     --font-display 是 editorial 衬线，自托管 Fraunces + 宋体兜底。
+
+     注意它的消费面很窄：在这次改动之前，整个生产代码里**没有任何规则**
+     消费 --font-display —— 唯一的引用在 opendesign/ 的 spec 里，那个目录
+     不参与构建。也就是说品牌指定的衬线定义了但从没落到界面上。现在
+     .nav-brand（wordmark）接上了它，是这个 token 的第一个真实消费者。
+     再加更多消费者之前先想清楚：Fraunces 只有西文，中文会掉到宋体，
+     所以它适合产品名和标题，不适合正文。 */
+  --font-display: "Fraunces", Georgia, "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

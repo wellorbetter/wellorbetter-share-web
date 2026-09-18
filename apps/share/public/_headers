@@ -7,5 +7,11 @@
   Cache-Control: public, max-age=31536000, immutable
 /favicon.svg
   Cache-Control: public, max-age=31536000, immutable
+# public/ is copied verbatim — Vite does NOT hash these names, so the content
+# hash is in the filename by hand (fraunces-latin.48282a41.woff2). That is what
+# makes `immutable` honest: re-subsetting the font produces a new name instead of
+# leaving a year of returning visitors stuck on a file they cannot bust.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
 /index.html
   Cache-Control: no-cache

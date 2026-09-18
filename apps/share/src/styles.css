@@ -98,8 +98,13 @@
   background: none;
   border: none;
   color: var(--text);
+  /* 第一个真实消费 --font-display 的规则（在这之前这个 token 定义了但零处使用）。
+     wordmark 是纯西文，所以 Fraunces 一定命中，不会掉到宋体。
+     17px 而不是 16px：Fraunces 的 x-height 比 system sans 矮，同号字视觉上小一圈，
+     这一号是补回来的，不是随手调的。 */
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 16px;
+  font-size: 17px;
   letter-spacing: 0.1px;
   padding: 8px 10px;
   margin: -8px -10px;
