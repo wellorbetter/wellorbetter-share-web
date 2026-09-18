@@ -7,9 +7,21 @@
  * package version is the same in both repos.
  *
  * Scope (T007):
+ *   - Fixture freshness: contract-fixture.json's recorded sourceHashes vs the
+ *     actual shared sources. Runs ALWAYS, in this repo alone.
  *   - ALL files under packages/shared/src/ (not just project.ts/policy).
  *   - Version consistency in packages/shared/package.json.
  *   - Contract fixture hash (if present).
+ *
+ * The cross-repo sections need a wellorbetter-api checkout beside this one, so
+ * they cannot run in public CI. That used to mean the whole gate exited 0 the
+ * moment the sibling was absent — indistinguishable from a pass, and it had
+ * never once run in CI. It also meant nothing checked the fixture against the
+ * sources it claims to describe: project.ts had drifted from its recorded hash
+ * (ProjectCard gained coverWidth/coverHeight) and no gate noticed.
+ *
+ * So the freshness check below is deliberately repo-local, and an absent
+ * sibling now reports SKIPPED without suppressing a freshness failure.
  *
  * Usage: node scripts/contract-check.mjs
  * Exit 0 if all identical, exit 1 if any mismatch or file missing.
@@ -64,15 +76,62 @@ function pass(msg) {
   console.log(`✓ ${msg}`);
 }
 
+// ─── 0. Fixture freshness — repo-local, always runs ────────────────
+
+console.log("── Fixture freshness check ──");
+
+if (!existsSync(webFixture)) {
+  console.log("  (no contract-fixture.json — run generate-fixture.mjs to create)");
+} else {
+  try {
+    const fixture = JSON.parse(readFileSync(webFixture, "utf-8"));
+    const recorded = fixture?._meta?.sourceHashes;
+    if (!recorded || typeof recorded !== "object") {
+      fail("contract-fixture.json has no _meta.sourceHashes — regenerate it");
+    } else {
+      for (const [file, recordedHash] of Object.entries(recorded)) {
+        const srcPath = join(webSharedDir, file);
+        if (!existsSync(srcPath)) {
+          fail(`fixture records ${file} but packages/shared/src/${file} is gone`);
+          continue;
+        }
+        const actual = hashFile(srcPath);
+        if (actual === recordedHash) {
+          pass(`${file}: fixture is current (SHA-256: ${actual.slice(0, 16)}…)`);
+        } else {
+          fail(
+            `${file}: fixture is STALE — the source changed after the fixture ` +
+              "was generated. Run `npm run generate-fixture`, then " +
+              "`npm run contract-gate` on the old and new fixture to classify " +
+              "the change before bumping @wellorbetter/shared.",
+          );
+          console.error(`  fixture records: ${recordedHash}`);
+          console.error(`  source is now:   ${actual}`);
+        }
+      }
+    }
+  } catch (err) {
+    fail(`fixture freshness check error: ${err.message}`);
+  }
+}
+
 // ─── 1. Check ALL shared source files ──────────────────────────────
 
+console.log("");
 console.log("── Shared source file hash check ──");
 
 if (!existsSync(apiRepoRoot)) {
-  console.log(
-    "⚠ wellorbetter-api not found — skipping contract check (expected in public CI; run locally for full check)",
-  );
-  process.exit(0);
+  // Cross-repo sections cannot run without the sibling checkout. Say SKIPPED,
+  // not nothing — and never let the skip mask a freshness failure above.
+  console.log("  SKIPPED: no wellorbetter-api checkout beside this repo.");
+  console.log("  (expected in public CI — the cross-repo contract is NOT verified here)");
+  console.log("");
+  if (allPassed) {
+    console.log("✓ Fixture freshness passed; cross-repo checks SKIPPED (not verified)");
+    process.exit(0);
+  }
+  console.error(`✗ Contract checks FAILED: ${failDetails.length} issue(s)`);
+  process.exit(1);
 }
 
 const webFiles = readdirSync(webSharedDir).filter((f) => f.endsWith(".ts"));
