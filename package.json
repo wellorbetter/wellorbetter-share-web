@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "wellorbetterai.com 前端：文件分享应用 + 落地页（React + Vite + Cloudflare Workers Static Assets）",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
@@ -14,5 +17,10 @@
     "boundary-check": "node scripts/boundary-check.mjs",
     "css-check": "node scripts/css-check.mjs"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "wrangler": "4.134.0"
+  }
 }
