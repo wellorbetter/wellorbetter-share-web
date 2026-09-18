@@ -697,6 +697,15 @@ a {
 }
 
 .terminal-preview {
+  /* 这块是「一张终端的图」，不是页面的一部分：它永远深色，不跟随主题。
+     所以要显式告诉 CSS 这件事 —— 有了 color-scheme: dark，子树里的
+     light-dark() 会解析深色分支，不管外面是浅色还是深色。
+
+     不声明的话会有个很安静的 bug：--lab-lime 现在是 var(--success)，
+     浅色模式下解析成 oklch(0.47 …) 的暗苔绿，12% 混在 #111317 上等于
+     深色压深色，那道光晕直接消失。之前 lime 是写死的亮绿所以没这问题，
+     是把 --lab-* 接到品牌 token 时一起带进来的。 */
+  color-scheme: dark;
   min-height: 278px;
   padding: 24px;
   background:
@@ -749,7 +758,13 @@ a {
 }
 
 .terminal-body p { margin: 0 0 7px; }
-.terminal-body b { color: #9d98ff; font-weight: 700; }
+/* #9d98ff 是上一版品牌紫的家族（对比当时的深色 accent-strong #a19cff）。
+   终端里其他颜色都是「终端的语言」—— 交通灯是 macOS 的窗口按钮、$ 提示符的
+   青柠是 shell 的惯例，那些不该品牌化。但加粗高亮不一样，它读起来就是
+   「产品色」，所以这一个跟品牌走。
+   靠上面的 color-scheme: dark 解析成 oklch(0.70 0.125 45) 的亮赭石 —— 浅色
+   分支的 oklch(0.55 …) 压在近黑背景上会糊掉。 */
+.terminal-body b { color: var(--primary); font-weight: 700; }
 .terminal-prompt { color: #c8ef6f; }
 .terminal-dim { color: #747a84; padding-top: 8px; }
 
