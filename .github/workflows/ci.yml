@@ -27,10 +27,23 @@ jobs:
         run: npm run contract-check
       - name: Typecheck
         run: npm run typecheck
+      - name: Test
+        run: npm test
       - name: Build share
         run: npm run build -w @wellorbetter/share
       - name: Build landing
         run: npm run build -w @wellorbetter/landing
+      # A skipped step renders in the same grey as one that never applied, so a
+      # push to main with no token configured looks identical to a successful
+      # deploy at a glance. Make the no-op say so.
+      - name: Deploy readiness (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning title=Nothing was deployed::CLOUDFLARE_API_TOKEN is not set, so the two deploy steps were skipped. This push to main did NOT reach production."
+          else
+            echo "CLOUDFLARE_API_TOKEN is set — deploy steps will run."
+          fi
       - name: Deploy share (main only, secrets configured)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && env.CLOUDFLARE_API_TOKEN != ''
         run: npm run deploy -w @wellorbetter/share

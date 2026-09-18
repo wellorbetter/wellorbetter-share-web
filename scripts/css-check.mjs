@@ -24,6 +24,11 @@
  * apps/share (styles.css defines no custom properties of its own), yet being a
  * .ts file it is invisible to every CSS tool in the pipeline.
  *
+ * It also scans opendesign/ — both .css files and <style> blocks inside .html.
+ * Those are the brand token sheet and the landing mockup, and they are the
+ * *least* protected code here: nothing builds them, so there is no bundler to
+ * complain and no test to fail.
+ *
  * Deliberately dependency-free: postcss is only a transitive dep of Vite, and a
  * CI gate should not rest on an undeclared package.
  *
@@ -116,9 +121,25 @@ console.log("");
 const cssFiles = [
   ...findFiles(join(repoRoot, "apps"), (e) => e.endsWith(".css")),
   ...findFiles(join(repoRoot, "packages"), (e) => e.endsWith(".css")),
+  // opendesign/ ships the brand token sheet and the landing mockup. It is not
+  // built, so a dropped declaration there is even quieter than in apps/.
+  ...findFiles(join(repoRoot, "opendesign"), (e) => e.endsWith(".css")),
 ];
 
 for (const f of cssFiles) scan(relPath(f), readFileSync(f, "utf-8"));
+
+// CSS inside <style> blocks in HTML — the opendesign mockups keep their whole
+// stylesheet inline, so none of it is reachable by a .css glob.
+let inlineBlocks = 0;
+for (const f of findFiles(join(repoRoot, "opendesign"), (e) => e.endsWith(".html"))) {
+  const html = readFileSync(f, "utf-8");
+  const rel = relPath(f);
+  for (const m of html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
+    const lineOffset = html.slice(0, m.index).split("\n").length - 1;
+    scan(`${rel} (<style>)`, "\n".repeat(lineOffset) + m[1]);
+    inlineBlocks++;
+  }
+}
 
 // CSS that lives inside .ts template literals — invisible to CSS tooling.
 const tokensPath = join(repoRoot, "packages", "design", "src", "tokens.ts");
@@ -139,7 +160,10 @@ if (existsSync(tokensPath)) {
 
 console.log("");
 if (violations === 0) {
-  console.log(`✓ CSS check passed (${cssFiles.length} css files, ${embedded} embedded stylesheet(s))`);
+  console.log(
+    `✓ CSS check passed (${cssFiles.length} css files, ` +
+      `${inlineBlocks} inline <style> block(s), ${embedded} embedded stylesheet(s))`,
+  );
   process.exit(0);
 } else {
   console.error(`✗ CSS check FAILED: ${violations} invalid declaration(s)`);

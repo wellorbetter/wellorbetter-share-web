@@ -3,7 +3,7 @@
     "generator": "generate-fixture.mjs",
     "version": "0.1.0",
     "sourceHashes": {
-      "project.ts": "979b97ffc5510538e228608aa1914e1a2b8ced886ed71972de47d905b9e87433",
+      "project.ts": "90c7d5b5bd6b7b8ed5d639b43519e7d27bb9e52d033db25456143ef3eecc379e",
       "project-policy.ts": "421453f4d7a6f04dfafb18d30cfef126dbe38b4213c628622a8cdb1058f360a1"
     }
   },
@@ -175,6 +175,8 @@
         "authorId",
         "authorName",
         "coverUrl",
+        "coverWidth",
+        "coverHeight",
         "tags",
         "status",
         "publishedAt",
