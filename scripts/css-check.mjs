@@ -32,7 +32,12 @@
  * Deliberately dependency-free: postcss is only a transitive dep of Vite, and a
  * CI gate should not rest on an undeclared package.
  *
- * Exit 0 if all declaration values balance, exit 1 otherwise.
+ * Second check, same failure shape: every root-relative url(/…) must resolve to a
+ * real file under some apps/<app>/public. A dangling one does not fail the build —
+ * the browser 404s it and falls back to the next font in the stack, so a broken
+ * @font-face just reads as "the brand serif isn't loading today".
+ *
+ * Exit 0 if all declaration values balance and all asset URLs resolve, 1 otherwise.
  */
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
@@ -115,6 +120,16 @@ function findFiles(dir, test, results = []) {
   return results;
 }
 
+/**
+ * Every stylesheet scanned above, kept so the asset check below can re-read it
+ * without walking the tree twice. Populated by scanAndKeep.
+ */
+const scanned = [];
+function scanAndKeep(name, css) {
+  scan(name, css);
+  scanned.push({ name, css });
+}
+
 console.log("Checking CSS declaration validity…");
 console.log("");
 
@@ -126,7 +141,7 @@ const cssFiles = [
   ...findFiles(join(repoRoot, "opendesign"), (e) => e.endsWith(".css")),
 ];
 
-for (const f of cssFiles) scan(relPath(f), readFileSync(f, "utf-8"));
+for (const f of cssFiles) scanAndKeep(relPath(f), readFileSync(f, "utf-8"));
 
 // CSS inside <style> blocks in HTML — the opendesign mockups keep their whole
 // stylesheet inline, so none of it is reachable by a .css glob.
@@ -136,7 +151,7 @@ for (const f of findFiles(join(repoRoot, "opendesign"), (e) => e.endsWith(".html
   const rel = relPath(f);
   for (const m of html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
     const lineOffset = html.slice(0, m.index).split("\n").length - 1;
-    scan(`${rel} (<style>)`, "\n".repeat(lineOffset) + m[1]);
+    scanAndKeep(`${rel} (<style>)`, "\n".repeat(lineOffset) + m[1]);
     inlineBlocks++;
   }
 }
@@ -153,8 +168,47 @@ if (existsSync(tokensPath)) {
     // Offset the reported line numbers to match the real file.
     const lineOffset = ts.slice(0, m.index).split("\n").length - 1;
     const padded = "\n".repeat(lineOffset) + body;
-    scan(`${rel} (${exportName})`, padded);
+    scanAndKeep(`${rel} (${exportName})`, padded);
     embedded++;
+  }
+}
+
+// ─── Asset references: every url(/…) must resolve to a real file ───────────
+//
+// A font or image url() that points at nothing does not fail the build and does
+// not throw. The browser 404s the request and silently uses the next family in
+// the stack — so a broken @font-face reads as "Fraunces just looks like Georgia
+// today". Nothing else in the pipeline can catch it: Vite copies public/
+// verbatim without resolving these URLs, and the token sheet is a .ts template
+// literal so no bundler ever parses its url().
+//
+// The font filename carries a hand-written content hash (public/ is copied as-is,
+// so Vite will not hash it) precisely so _headers can mark it immutable. That
+// makes a rename a two-place edit, which is exactly the kind of thing that gets
+// half-done.
+const publicRoots = readdirSync(join(repoRoot, "apps"))
+  .map((app) => join(repoRoot, "apps", app, "public"))
+  .filter((p) => existsSync(p));
+
+let assetRefs = 0;
+for (const { name, css } of scanned) {
+  const body = stripComments(css);
+  for (const m of body.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)) {
+    const url = m[1].trim();
+    // Only root-relative paths are checkable here. data:, http(s): and relative
+    // paths are resolved by the bundler or the network, not by public/.
+    if (!url.startsWith("/")) continue;
+    assetRefs++;
+    const rel = url.replace(/[?#].*$/, "").slice(1);
+    const found = publicRoots.filter((root) => existsSync(join(root, rel)));
+    if (found.length === 0) {
+      const line = body.slice(0, m.index).split("\n").length;
+      report(
+        `${name}:${line}: url(${url}) matches no file under ` +
+          `${publicRoots.map(relPath).join(", ") || "any apps/*/public"} — ` +
+          `the browser will 404 and silently fall back`,
+      );
+    }
   }
 }
 
@@ -162,11 +216,13 @@ console.log("");
 if (violations === 0) {
   console.log(
     `✓ CSS check passed (${cssFiles.length} css files, ` +
-      `${inlineBlocks} inline <style> block(s), ${embedded} embedded stylesheet(s))`,
+      `${inlineBlocks} inline <style> block(s), ${embedded} embedded stylesheet(s), ` +
+      `${assetRefs} asset url(/…) reference(s) resolved)`,
   );
   process.exit(0);
 } else {
-  console.error(`✗ CSS check FAILED: ${violations} invalid declaration(s)`);
-  console.error("  An unbalanced paren makes the CSS parser drop that declaration silently.");
+  console.error(`✗ CSS check FAILED: ${violations} problem(s)`);
+  console.error("  An unbalanced paren makes the CSS parser drop that declaration silently;");
+  console.error("  a dangling url() 404s and falls back to the next font/background silently.");
   process.exit(1);
 }
