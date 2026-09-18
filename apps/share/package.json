@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --port 5173",
     "build": "tsc --noEmit && vite build",
+    "deploy": "wrangler deploy",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

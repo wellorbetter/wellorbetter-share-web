@@ -33,9 +33,7 @@ jobs:
         run: npm run build -w @wellorbetter/landing
       - name: Deploy share (main only, secrets configured)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && env.CLOUDFLARE_API_TOKEN != ''
-        working-directory: apps/share
-        run: npx wrangler deploy
+        run: npm run deploy -w @wellorbetter/share
       - name: Deploy landing (main only, secrets configured)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && env.CLOUDFLARE_API_TOKEN != ''
-        working-directory: apps/landing
-        run: npx wrangler deploy
+        run: npm run deploy -w @wellorbetter/landing
