@@ -24,7 +24,13 @@ export type IconName =
   | "spinner";
 
 const paths: Record<IconName, string> = {
-  logo: '<rect x="3" y="3" width="18" height="18" rx="5" fill="currentColor"/><path d="M8 12h8M12 8v8" stroke="#fff" stroke-width="2" stroke-linecap="round"/>',
+  // 加号是「挖掉的洞」，不是一个颜色：evenodd 让内层子路径从圆角方块里减出去。
+  // 原来写的是 stroke="#fff"，方块 fill="currentColor" 会跟着主题翻，白十字不会 ——
+  // 深色模式下方块变成近白，十字还是白的，加号直接看不见了。四个地方共用这个标记
+  // （share nav、landing brand-mark/footer-mark、portfolio），所以那是四处一起的 bug。
+  // 挖空之后它不需要知道自己在什么模式、什么背景上，连 --app-bg-image 那几个
+  // 有色背景也对。
+  logo: '<path fill="currentColor" fill-rule="evenodd" d="M8 3h8a5 5 0 0 1 5 5v8a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5V8a5 5 0 0 1 5-5Zm3 5v3H8v2h3v3h2v-3h3v-2h-3V8Z"/>',
   upload: '<path d="M12 16V4m0 0L7 9m5-5l5 5M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14l5-5-5-5m5 5H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',

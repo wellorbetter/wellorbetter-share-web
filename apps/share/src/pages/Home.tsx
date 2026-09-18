@@ -51,6 +51,15 @@ export function HomePage({ isAuthed = false, onPublish, onLogin, onOpenProject }
 
   return (
     <div className="home-page">
+      {/* 页面之前直接从瀑布流开始：访客落地时没有任何一句话告诉他这是什么。
+          标题是静态的，不等 feed —— 加载中、报错、空列表时它都在，所以出错的
+          页面也还是一个有身份的页面，而不是一句光秃秃的「加载失败」。 */}
+      <header className="home-header">
+        <p className="home-eyebrow">DISCOVER</p>
+        <h1 className="home-title">最近发布的作品</h1>
+        <p className="home-lede">按发布时间排列。点进去看得到做法，也下得到能跑的东西。</p>
+      </header>
+
       {feed.items.length === 0 && showStatus ? (
         <FeedStatus
           status={feed.status}
