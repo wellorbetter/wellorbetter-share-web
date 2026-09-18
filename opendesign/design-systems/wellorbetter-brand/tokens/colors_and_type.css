@@ -1,0 +1,389 @@
+/* ==========================================================================
+   wellorbetter — paper-and-ink editorial
+   Canonical tokens. Warm neutral, restrained, one committed accent.
+
+   Direction: 纸感暖底 + editorial serif 大标题 + mono 作技术标记。
+   Replaces the Material 3 stock-blue seed (#445E91) that had no brand in it.
+
+   Rules held throughout:
+   - Neutrals keep chroma <= 0.02. They are warm, never grey-blue.
+   - Accents share lightness and chroma; only hue varies.
+   - No Inter, no Roboto, no bare system stack.
+   - No bluish-purple gradient. No colored left-border accent strips.
+
+   Light/dark: every colour is ONE declaration via light-dark(). There is no
+   second copy of the palette to keep in sync. An earlier revision had a
+   :root[data-theme="dark"] block plus a @media (prefers-color-scheme: dark)
+   block, and they drifted: the media copy kept a stale moss chroma and was
+   missing --accent-*-ink entirely, which put status pills at 1.93:1 for every
+   system-dark visitor who had not touched the toggle. light-dark() keys off
+   `color-scheme`, so the attribute below is all that overrides the system.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Fonts
+
+   Latin display : Fraunces      — variable editorial serif, soft + wonk axes
+   Latin body    : Instrument Sans — warm humanist sans, quiet but not stock
+   Mono          : JetBrains Mono — status, tags, counts, eyebrows
+   CJK           : Noto Serif SC / Noto Sans SC — the site is zh-CN first,
+                   so every stack must name a CJK face explicitly. Without
+                   this the browser falls back per-glyph and the Chinese
+                   text stops matching the Latin.
+   -------------------------------------------------------------------------- */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Noto+Serif+SC:wght@300..900&family=Noto+Sans+SC:wght@300..900&display=swap");
+
+/* --------------------------------------------------------------------------
+   2. Theme switching
+
+   `color-scheme` is the single switch every light-dark() below reads.
+   Unset attribute = follow the OS. The attribute is only written when the
+   visitor has actually chosen, so the OS preference stays authoritative for
+   first visits and for no-JS.
+   -------------------------------------------------------------------------- */
+:root {
+  color-scheme: light dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+:root {
+  /* ---- raw font families ---- */
+  --font-display: "Fraunces", "Noto Serif SC", Georgia, serif;
+  --font-body: "Instrument Sans", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Noto Sans SC", ui-monospace, monospace;
+
+  /* Fraunces variable axes. SOFT rounds the terminals, WONK enables the
+     quirky alternates. Kept low: 有个性但不怪. */
+  --display-soft: 28;
+  --display-wonk: 1;
+
+  /* ---- raw type scale — 1.26 ratio off a 17px body ---- */
+  --step--1: 0.842rem;  /* 13.5px  captions, footnotes */
+  --step-0: 1.0625rem;  /* 17px    body */
+  --step-1: 1.339rem;   /* 21.4px  lead paragraph */
+  --step-2: 1.687rem;   /* 27px    h3 */
+  --step-3: 2.126rem;   /* 34px    h2 */
+  --step-4: 2.679rem;   /* 42.9px  h1 on small screens */
+  --step-5: 3.375rem;   /* 54px    section display */
+  --step-6: 4.253rem;   /* 68px    hero */
+
+  /* ---- raw weights ---- */
+  --w-light: 300;
+  --w-regular: 400;
+  --w-medium: 500;
+  --w-semibold: 600;
+  --w-bold: 700;
+
+  /* ---- raw warm neutrals — chroma <= 0.02 throughout ----
+     light-dark(light value, dark value) */
+  --paper-1: light-dark(oklch(0.968 0.008 78), oklch(0.185 0.012 62));  /* page */
+  --paper-2: light-dark(oklch(0.985 0.006 78), oklch(0.225 0.012 62));  /* raised card */
+  --paper-3: light-dark(oklch(0.942 0.010 76), oklch(0.265 0.012 62));  /* sunken, code */
+  --paper-4: light-dark(oklch(0.910 0.012 75), oklch(0.305 0.012 62));  /* pressed, track */
+
+  --ink-1: light-dark(oklch(0.235 0.014 55), oklch(0.945 0.008 80));    /* primary text */
+  --ink-2: light-dark(oklch(0.505 0.012 60), oklch(0.735 0.010 76));    /* secondary text */
+  /* Tertiary is 13.5px, so it needs the 4.5:1 small-text ratio, not 3:1.
+     Light L capped at 0.54 (threshold is 0.546 on --paper-1, 0.558 on
+     --paper-2). Dark measured 4.49:1 at L 0.610 — just under — so 0.640. */
+  --ink-3: light-dark(oklch(0.54 0.010 62), oklch(0.640 0.010 72));     /* tertiary */
+
+  /* Hairlines do more work than shadows in this system, so --rule-1 has to
+     be visible: --paper-2 against --paper-1 is only a 1.02:1 step, which
+     makes the border the sole thing defining a card edge. */
+  --rule-1: light-dark(oklch(0.855 0.010 76), oklch(0.325 0.012 64));   /* hairline */
+  --rule-2: light-dark(oklch(0.800 0.012 76), oklch(0.395 0.012 64));   /* divider */
+
+  /* ---- raw accents — same L and C within a mode, hue only ----
+     Dark lifts L so contrast holds and drops C slightly so they do not glow. */
+  --accent-terracotta: light-dark(oklch(0.55 0.135 42), oklch(0.70 0.125 45));
+  --accent-moss: light-dark(oklch(0.55 0.135 148), oklch(0.70 0.125 150));
+
+  --accent-terracotta-soft: light-dark(oklch(0.93 0.035 46), oklch(0.32 0.045 44));
+  --accent-moss-soft: light-dark(oklch(0.93 0.035 150), oklch(0.32 0.045 150));
+
+  /* Text-on-soft variants. In light the accents at L 0.55 only reach 3.77:1
+     (moss) and 4.14:1 (terracotta) on their own soft backgrounds, which fails
+     at pill size — so they darken. In dark the soft backgrounds are themselves
+     dark, so these track the accents instead. */
+  --accent-terracotta-ink: light-dark(oklch(0.50 0.135 42), oklch(0.70 0.125 45));
+  --accent-moss-ink: light-dark(oklch(0.47 0.135 148), oklch(0.70 0.125 150));
+
+  /* ---- spacing — 4px base, named by intent not size ---- */
+  --space-hair: 0.25rem;
+  --space-tight: 0.5rem;
+  --space-snug: 0.75rem;
+  --space-base: 1rem;
+  --space-roomy: 1.5rem;
+  --space-loose: 2.5rem;
+  --space-section: 5rem;
+  --space-chapter: 8rem;
+
+  /* ---- radii — small and consistent. No pill buttons, no 2xl cards. ---- */
+  --radius-sm: 3px;
+  --radius-base: 5px;
+  --radius-lg: 8px;
+
+  /* ---- shadows — warm-tinted, low. Paper lifting, not glass floating.
+     Dark keeps the warm hue and raises alpha; pure black reads as a hole. ---- */
+  --shadow-low: 0 1px 2px light-dark(oklch(0.235 0.014 55 / 0.05), oklch(0.12 0.012 60 / 0.34));
+  --shadow-mid: 0 2px 8px light-dark(oklch(0.235 0.014 55 / 0.07), oklch(0.12 0.012 60 / 0.4));
+  --shadow-high: 0 8px 28px light-dark(oklch(0.235 0.014 55 / 0.09), oklch(0.12 0.012 60 / 0.48));
+
+  /* ---- motion — few moments, generous easing ---- */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.5, 0, 0.5, 1);
+  --dur-quick: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 480ms;
+
+  --measure: 68ch; /* max line length for body copy */
+}
+
+/* --------------------------------------------------------------------------
+   3. Semantic layer — components reference ONLY these.
+   Swapping a raw value above must never require touching a component.
+   -------------------------------------------------------------------------- */
+:root {
+  --surface-page: var(--paper-1);
+  --surface-raised: var(--paper-2);
+  --surface-sunken: var(--paper-3);
+  --surface-pressed: var(--paper-4);
+
+  --text-primary: var(--ink-1);
+  --text-secondary: var(--ink-2);
+  --text-tertiary: var(--ink-3);
+  /* Not var(--paper-2): on dark that would resolve to the dark paper and put
+     near-black text on a mid-tone accent. Stated outright for both modes. */
+  --text-on-accent: light-dark(oklch(0.985 0.006 78), oklch(0.185 0.012 62));
+
+  --border-subtle: var(--rule-1);
+  --border-strong: var(--rule-2);
+
+  --accent: var(--accent-terracotta);
+  --accent-surface: var(--accent-terracotta-soft);
+  --accent-alt: var(--accent-moss);
+  --accent-alt-surface: var(--accent-moss-soft);
+
+  --link: var(--accent-terracotta);
+  --link-hover: light-dark(oklch(0.46 0.145 40), oklch(0.78 0.115 47));
+
+  /* Project status. Mapped onto the two accents plus neutrals — a status
+     system does not get its own palette. The -ink variants are used because
+     status text is pill-sized. */
+  --status-shipped: var(--accent-moss-ink);          /* 已发布 / 在线 */
+  --status-shipped-bg: var(--accent-moss-soft);
+  --status-experiment: var(--accent-terracotta-ink); /* 实验中 / Alpha */
+  --status-experiment-bg: var(--accent-terracotta-soft);
+  --status-neutral: var(--ink-2);                    /* Plugin / draft */
+  --status-neutral-bg: var(--paper-3);
+
+  /* type roles */
+  --h1-family: var(--font-display);
+  --h1-size: clamp(var(--step-4), 6.5vw, var(--step-6));
+  --h1-weight: var(--w-semibold);
+  --h1-leading: 1.04;
+  --h1-tracking: -0.022em;
+
+  --h2-family: var(--font-display);
+  --h2-size: clamp(var(--step-3), 4vw, var(--step-5));
+  --h2-weight: var(--w-semibold);
+  --h2-leading: 1.1;
+  --h2-tracking: -0.016em;
+
+  --h3-family: var(--font-display);
+  --h3-size: var(--step-2);
+  --h3-weight: var(--w-medium);
+  --h3-leading: 1.22;
+  --h3-tracking: -0.01em;
+
+  --lead-family: var(--font-body);
+  --lead-size: var(--step-1);
+  --lead-weight: var(--w-regular);
+  --lead-leading: 1.62;
+
+  --body-family: var(--font-body);
+  --body-size: var(--step-0);
+  --body-weight: var(--w-regular);
+  --body-leading: 1.72;
+
+  --caption-family: var(--font-body);
+  --caption-size: var(--step--1);
+  --caption-leading: 1.5;
+
+  /* Eyebrow / status / tag — mono, wide-tracked, uppercase for Latin.
+     This is the brand's technical register. Used for VIBE CODING LAB,
+     RECENT SHIPS, HOW I BUILD, status pills, tags, counters.
+     Two tracking roles, so components never hand-write a magic em value:
+     --eyebrow-tracking for standalone section labels, --mono-tracking for
+     inline technical text (tags, kickers, captions, metadata). */
+  --eyebrow-family: var(--font-mono);
+  --eyebrow-size: var(--step--1);
+  --eyebrow-weight: var(--w-medium);
+  --eyebrow-tracking: 0.13em;
+  --mono-tracking: 0.06em;
+}
+
+/* --------------------------------------------------------------------------
+   4. Base element styles
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--body-family);
+  font-size: var(--body-size);
+  font-weight: var(--body-weight);
+  line-height: var(--body-leading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-variation-settings: "SOFT" var(--display-soft), "WONK" var(--display-wonk);
+  text-wrap: balance;
+}
+
+h1 {
+  font-family: var(--h1-family);
+  font-size: var(--h1-size);
+  font-weight: var(--h1-weight);
+  line-height: var(--h1-leading);
+  letter-spacing: var(--h1-tracking);
+}
+
+h2 {
+  font-family: var(--h2-family);
+  font-size: var(--h2-size);
+  font-weight: var(--h2-weight);
+  line-height: var(--h2-leading);
+  letter-spacing: var(--h2-tracking);
+}
+
+h3 {
+  font-family: var(--h3-family);
+  font-size: var(--h3-size);
+  font-weight: var(--h3-weight);
+  line-height: var(--h3-leading);
+  letter-spacing: var(--h3-tracking);
+}
+
+p {
+  margin: 0;
+  max-width: var(--measure);
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--link);
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.18em;
+  transition: color var(--dur-quick) var(--ease-out);
+}
+
+a:hover {
+  color: var(--link-hover);
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. The utilities the brand actually depends on
+   -------------------------------------------------------------------------- */
+
+/* Technical register. Latin uppercases; CJK must not letter-space-uppercase,
+   so :lang(zh) drops the transform and tightens tracking. */
+.eyebrow {
+  font-family: var(--eyebrow-family);
+  font-size: var(--eyebrow-size);
+  font-weight: var(--eyebrow-weight);
+  letter-spacing: var(--eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.eyebrow:lang(zh) {
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+/* Inline technical register — tags, kickers, metadata, counters. Same mono
+   family as .eyebrow but narrower tracking and no uppercasing, because these
+   sit inline next to prose rather than standing alone above it. Components
+   reference this instead of re-declaring the mono stack. */
+.mono {
+  font-family: var(--eyebrow-family);
+  font-size: var(--eyebrow-size);
+  letter-spacing: var(--mono-tracking);
+  color: var(--text-tertiary);
+}
+
+/* Paper grain. One atmospheric layer, cheap, no image request. This is the
+   "warm" in warm-neutral doing visible work. */
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+/* mix-blend-mode and opacity are not colours, so light-dark() cannot carry
+   them — this is the one rule that still needs both selectors. Keep the two
+   bodies identical. */
+:root[data-theme="dark"] .grain::before {
+  mix-blend-mode: screen;
+  opacity: 0.22;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .grain::before {
+    mix-blend-mode: screen;
+    opacity: 0.22;
+  }
+}

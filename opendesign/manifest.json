@@ -1,0 +1,35 @@
+{
+  "generated": "2026-09-17",
+  "design_systems": [
+    "wellorbetter-brand"
+  ],
+  "mockups": [
+    "landing"
+  ],
+  "files": [
+    {
+      "path": "design-systems/wellorbetter-brand/README.md",
+      "bytes": 3302
+    },
+    {
+      "path": "design-systems/wellorbetter-brand/SKILL.md",
+      "bytes": 2978
+    },
+    {
+      "path": "design-systems/wellorbetter-brand/brand/style-notes.md",
+      "bytes": 4281
+    },
+    {
+      "path": "design-systems/wellorbetter-brand/brand/voice-and-tone.md",
+      "bytes": 2390
+    },
+    {
+      "path": "design-systems/wellorbetter-brand/tokens/colors_and_type.css",
+      "bytes": 14398
+    },
+    {
+      "path": "mockups/landing/index.html",
+      "bytes": 31249
+    }
+  ]
+}
