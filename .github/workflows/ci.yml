@@ -21,6 +21,8 @@ jobs:
         run: npm ci
       - name: Boundary check (T006)
         run: npm run boundary-check
+      - name: CSS check
+        run: npm run css-check
       - name: Contract check (T002/T003)
         run: npm run contract-check
       - name: Typecheck

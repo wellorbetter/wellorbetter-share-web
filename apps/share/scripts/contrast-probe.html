@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>probe</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff}
+  #f{border:0;display:block;width:1440px;height:900px}
+  body.narrow #f{width:375px;height:760px}
+</style>
+</head>
+<body>
+<iframe id="f"></iframe>
+<script>
+// Never fail silently: a stray syntax error once produced an empty report that
+// read exactly like "no problems found".
+const ERRORS = [];
+window.onerror = (m, s, l, c) => { ERRORS.push(m + " @" + l + ":" + c); };
+
+const qs = new URLSearchParams(location.search);
+const THEME = qs.get("theme") || "light";
+const PAGE  = qs.get("page")  || "/";
+if (qs.get("w") === "375") document.body.classList.add("narrow");
+
+const cv = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+// Resolve any CSS colour to sRGB. Regex-parsing oklch() as RGB bytes invents
+// ~87 failures all sitting at ratio 1.0; canvas handles oklch natively.
+function rgba(c) {
+  if (!c || c === "transparent" || c === "none") return null;
+  cv.fillStyle = "#000"; cv.fillStyle = c;
+  const css = cv.fillStyle;
+  cv.clearRect(0, 0, 1, 1); cv.fillStyle = c; cv.fillRect(0, 0, 1, 1);
+  const d = cv.getImageData(0, 0, 1, 1).data;
+  let a = 1;
+  const m = /rgba?\([^)]*?([\d.]+)\s*\)/.exec(c) || /\/\s*([\d.]+%?)\s*\)/.exec(c);
+  if (m) a = m[1].endsWith("%") ? parseFloat(m[1]) / 100 : parseFloat(m[1]);
+  return { r: d[0], g: d[1], b: d[2], a, css };
+}
+function lum({ r, g, b }) {
+  const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function over(fg, bg) {
+  const a = fg.a == null ? 1 : fg.a;
+  return { r: fg.r * a + bg.r * (1 - a), g: fg.g * a + bg.g * (1 - a), b: fg.b * a + bg.b * (1 - a) };
+}
+function sel(el) {
+  let s = el.tagName.toLowerCase();
+  if (el.className && typeof el.className === "string")
+    s += "." + el.className.trim().split(/\s+/).slice(0, 2).join(".");
+  return s;
+}
+
+function run(doc, win) {
+  const out = { errors: ERRORS, fails: [], small: [], samples: {}, counts: {} };
+  function bgOf(el) {
+    let n = el, acc = [];
+    while (n && n.nodeType === 1) {
+      const c = rgba(win.getComputedStyle(n).backgroundColor);
+      if (c && c.a > 0) { acc.push(c); if (c.a >= 0.999) break; }
+      n = n.parentElement;
+    }
+    let base = { r: 255, g: 255, b: 255 };
+    for (let i = acc.length - 1; i >= 0; i--) base = over(acc[i], base);
+    return base;
+  }
+
+  const els = [...doc.querySelectorAll("*")];
+  out.counts.elements = els.length;
+  let textNodes = 0;
+  for (const el of els) {
+    const cs = win.getComputedStyle(el);
+    if (cs.visibility === "hidden" || cs.display === "none" || parseFloat(cs.opacity) < 0.1) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+
+    const tag = el.tagName.toLowerCase();
+    const interactive = tag === "button" || tag === "a" || tag === "select" ||
+      tag === "input" || el.getAttribute("role") === "radio";
+    if (interactive && (r.height < 44 || r.width < 44))
+      out.small.push({ sel: sel(el), w: Math.round(r.width), h: Math.round(r.height) });
+
+    const own = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 1);
+    if (!own) continue;
+    textNodes++;
+    const fg = rgba(cs.color); if (!fg) continue;
+    const bg = bgOf(el);
+    const px = parseFloat(cs.fontSize), wt = parseInt(cs.fontWeight, 10) || 400;
+    const need = (px >= 24 || (px >= 18.66 && wt >= 700)) ? 3 : 4.5;
+    const got = ratio(over(fg, bg), bg);
+    if (got < need) out.fails.push({ sel: sel(el), px: +px.toFixed(1), wt,
+      got: +got.toFixed(2), need, fg: cs.color, text: el.textContent.trim().slice(0, 34) });
+  }
+  out.counts.textNodes = textNodes;
+  out.overflow = { scrollW: doc.documentElement.scrollWidth, clientW: doc.documentElement.clientWidth };
+
+  // Custom properties are substitution values: getPropertyValue("--bg") returns
+  // the literal light-dark(...) text, which canvas cannot parse -- it keeps the
+  // previous fillStyle and every token silently reads #000000. Resolve through
+  // a real element, where the cascade has already collapsed light-dark().
+  const probe = doc.createElement("div");
+  probe.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px";
+  doc.body.appendChild(probe);
+  for (const t of ["--bg", "--surface-container-low", "--surface-container-high",
+                   "--surface-container-highest", "--text", "--text-muted",
+                   "--primary", "--outline", "--outline-variant", "--success", "--error"]) {
+    probe.style.backgroundColor = "";
+    probe.style.backgroundColor = `var(${t})`;
+    const res = win.getComputedStyle(probe).backgroundColor;
+    const c = rgba(res);
+    out.samples[t] = c ? c.css : "UNRESOLVED(" + res + ")";
+  }
+  probe.remove();
+  out.dataTheme = doc.documentElement.getAttribute("data-theme");
+  return out;
+}
+
+const f = document.getElementById("f");
+f.addEventListener("load", () => {
+  setTimeout(() => {
+    let report;
+    try {
+      const doc = f.contentDocument, win = f.contentWindow;
+      if (THEME === "dark" || THEME === "light") doc.documentElement.dataset.theme = THEME;
+      // Kill transitions BEFORE reading. Reading right after a theme change
+      // returns Chrome's mid-transition oklab() interpolation -- dozens of
+      // phantom failures that a setTimeout does not fix under virtual time.
+      const kill = doc.createElement("style");
+      kill.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}";
+      doc.head.appendChild(kill);
+      void doc.documentElement.offsetHeight;
+      report = run(doc, win);
+    } catch (e) { report = { fatal: String(e), errors: ERRORS }; }
+    const pre = document.createElement("pre");
+    pre.textContent = "REPORT_JSON:" + JSON.stringify(report);
+    pre.style.cssText = "position:fixed;left:-9999px";
+    document.body.appendChild(pre);
+    document.title = "done";
+  }, 700);
+});
+f.src = PAGE;
+</script>
+</body>
+</html>

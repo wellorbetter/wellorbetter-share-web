@@ -102,7 +102,11 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   );
 }
 
-/* ---------- inline styles (visual spec from task graph) ---------- */
+/* ---------- inline styles ----------
+   Every colour reads a token instead of a literal. The original spec hardcoded
+   #333333 / #666666 / #D1D1D1 / #F5F5F5 / #DC3545, which made this page the one
+   surface that stayed light while the rest of the app went dark. Sizes stay
+   literal — only colour and radius are system concerns. */
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -113,7 +117,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 24,
     fontWeight: 700,
-    color: "#333333",
+    color: "var(--text)",
     margin: "0 0 24px 0",
   },
   form: {
@@ -128,7 +132,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "block",
     fontSize: 14,
     fontWeight: 500,
-    color: "#333333",
+    color: "var(--text)",
     marginBottom: 8,
   },
   input: {
@@ -137,35 +141,36 @@ const styles: Record<string, React.CSSProperties> = {
     height: 40,
     padding: "0 12px",
     fontSize: 16,
-    color: "#333333",
-    border: "1px solid #D1D1D1",
-    borderRadius: 8,
+    color: "var(--text)",
+    backgroundColor: "var(--surface-container-low)",
+    border: "1px solid var(--outline-variant)",
+    borderRadius: "var(--radius)",
     outline: "none",
     boxSizing: "border-box",
     transition: "border-color 0.15s ease",
   },
   inputReadOnly: {
-    backgroundColor: "#F5F5F5",
-    color: "#666666",
+    backgroundColor: "var(--surface-container-high)",
+    color: "var(--text-muted)",
     cursor: "default",
   },
   infoText: {
     fontSize: 14,
-    color: "#666666",
+    color: "var(--text-muted)",
     margin: "0 0 20px 0",
     padding: "12px 16px",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    border: "1px solid #D1D1D1",
+    backgroundColor: "var(--surface-container-high)",
+    borderRadius: "var(--radius)",
+    border: "1px solid var(--outline-variant)",
   },
   errorText: {
     fontSize: 14,
-    color: "#DC3545",
+    color: "var(--error)",
     margin: "0 0 12px 0",
   },
   loadingText: {
     fontSize: 16,
-    color: "#666666",
+    color: "var(--text-muted)",
     textAlign: "center" as const,
   },
 };
