@@ -1,0 +1,348 @@
+/**
+ * 开源贡献页（/contributions/:username）自己的那部分。
+ *
+ * 外壳（.portfolio-page / topbar / .portfolio-state / .portfolio-section /
+ * .portfolio-stats / footer）直接复用 portfolio.css —— 同一个 --lab-* 家族、同一种
+ * 页面，没有理由再写一遍。这里只有 feed 特有的东西。
+ *
+ * 状态配色沿用 portfolio.css 已经建立的约定:**merged 用 accent，open 用绿色**。
+ * 直觉上反了（绿色更像"成功"），但那边先立的，而且和 GitHub 一致（open PR 是绿的）。
+ * 两个页面会被同一个人在同一次访问里看到，跨页不一致比单页不直觉更糟。
+ * 差别只有一处:那边把绿色写成了 #298641 硬编码，这里用 --lab-lime（= --success，
+ * 亮度 0.47，和那个 hex 基本同一档）。没有顺手去改那边 —— 换色要重新量对比度，
+ * 不该夹在这个改动里。
+ */
+
+/* ── hero ─────────────────────────────────────────────────────────────────── */
+
+.feed-hero {
+  padding: 46px 0 8px;
+}
+
+.feed-eyebrow {
+  margin: 0 0 12px;
+  color: var(--lab-accent);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .16em;
+}
+
+.feed-hero h1 {
+  max-width: 20em;
+  margin: 0;
+  font-size: clamp(28px, 4.4vw, 46px);
+  line-height: 1.08;
+  letter-spacing: -.03em;
+}
+
+.feed-hero-sub {
+  max-width: 54em;
+  margin: 14px 0 30px;
+  color: var(--lab-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* 六个格子里唯一一个不是数字的。.portfolio-stat strong 是 28px，装不下
+   "2026-03 → 2026-09" —— 窄屏上会折行并顶掉下面的标签。 */
+.contributions-page .portfolio-stat.is-range strong {
+  font-size: 17px;
+  letter-spacing: -.02em;
+}
+
+/* ── 仓库排行 ─────────────────────────────────────────────────────────────── */
+
+/**
+ * 列宽定义在**列表**上，行用 subgrid 借过去。
+ *
+ * 第一版是每个 .feed-repo 自己 display:grid —— 于是每一行独立算列宽，17 条的 lawnchair
+ * 和 1 条的 mxc 各排各的，条形、数字、日期在视觉上全是歪的。行是兄弟元素，它们之间
+ * 没有任何共享上下文，subgrid 就是补这个的。
+ *
+ * 六列:仓库名 | 条形 | 合并数 | 总数 | 时间区间 | 箭头。
+ */
+.feed-repo-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 190px) auto auto auto 14px;
+  column-gap: 18px;
+  overflow: hidden;
+  border: 1px solid var(--lab-line);
+  border-radius: 16px;
+  background: var(--lab-panel);
+}
+
+.feed-repo {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  padding: 15px 18px;
+  align-items: center;
+  color: var(--lab-text);
+  text-decoration: none;
+  transition: background 160ms ease;
+}
+
+.feed-repo + .feed-repo {
+  border-top: 1px solid var(--lab-line);
+}
+
+.feed-repo:hover {
+  background: var(--lab-accent-soft);
+}
+
+/* hover 不做 padding-left 位移（.portfolio-contribution 那种）:行是 subgrid，
+   padding 变化会挤压继承来的列轨道，整行的列一起抖。位移交给箭头。 */
+.feed-repo:hover .feed-arrow {
+  transform: translate(2px, -2px);
+}
+
+.feed-repo-name {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.feed-repo-name b {
+  overflow: hidden;
+  font-size: 14px;
+  letter-spacing: -.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-repo-name span {
+  color: var(--lab-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+/* 轨道满宽，fill 的宽度是「条数 / 最多的那个仓库」—— 长度是量，分段比例是构成。
+   两层的理由写在 ContributionsPage.tsx 的 RepositoryRow 里。 */
+.feed-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lab-muted) 11%, transparent);
+}
+
+.feed-bar-fill {
+  height: 100%;
+  min-width: 4px;
+  overflow: hidden;
+  display: flex;
+  gap: 2px;
+  border-radius: 999px;
+}
+
+.feed-bar-fill i {
+  min-width: 3px;
+}
+
+.feed-bar-fill i.is-merged {
+  background: var(--lab-accent);
+}
+
+.feed-bar-fill i.is-open {
+  background: var(--lab-lime);
+}
+
+.feed-bar-fill i.is-closed {
+  background: color-mix(in srgb, var(--lab-muted) 42%, transparent);
+}
+
+.feed-count-merged,
+.feed-count-total,
+.feed-repo-span {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.feed-count-merged {
+  color: var(--lab-accent);
+  font-weight: 850;
+}
+
+.feed-count-total {
+  color: var(--lab-muted);
+}
+
+.feed-repo-span {
+  color: var(--lab-muted);
+  font-size: 8px;
+}
+
+.feed-arrow {
+  color: var(--lab-accent);
+  font-size: 13px;
+  transition: transform 160ms ease;
+}
+
+/* ── 时间流 ───────────────────────────────────────────────────────────────── */
+
+.feed-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.feed-month-head {
+  padding: 0 2px 9px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid var(--lab-line);
+}
+
+.feed-month-head h3 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: -.01em;
+}
+
+.feed-month-head span {
+  color: var(--lab-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.feed-pr-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.feed-pr {
+  padding: 14px 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  color: var(--lab-text);
+  text-decoration: none;
+  transition: background 160ms ease, padding-left 160ms ease;
+}
+
+.feed-pr + .feed-pr {
+  border-top: 1px solid color-mix(in srgb, var(--lab-line) 62%, transparent);
+}
+
+.feed-pr:hover {
+  padding-left: 10px;
+  background: var(--lab-accent-soft);
+}
+
+.feed-pr-main {
+  min-width: 0;
+}
+
+.feed-pr-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--lab-muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+}
+
+.feed-pr-repo {
+  color: var(--lab-accent);
+  font-weight: 800;
+}
+
+.feed-pr h3 {
+  margin: 7px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: -.02em;
+}
+
+.feed-status {
+  padding: 6px 8px;
+  border: 1px solid var(--lab-line);
+  border-radius: 999px;
+  color: var(--lab-muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.feed-status.is-merged {
+  color: var(--lab-accent);
+  border-color: color-mix(in srgb, var(--lab-accent) 38%, var(--lab-line));
+  background: var(--lab-accent-soft);
+}
+
+.feed-status.is-open {
+  color: var(--lab-lime);
+  border-color: color-mix(in srgb, var(--lab-lime) 38%, var(--lab-line));
+}
+
+/* is-closed 不给颜色:未合并是中性事实，不是错误。红色会把"提了没被接受"
+   画成失败，而这一页的立场恰好是这些照样值得放出来。 */
+
+.feed-portfolio-link {
+  padding: 7px 11px;
+  border: 1px solid var(--lab-line-strong);
+  border-radius: 999px;
+  color: var(--lab-text);
+  font-size: 10px;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.feed-portfolio-link:hover {
+  border-color: var(--lab-accent);
+  color: var(--lab-accent);
+}
+
+.feed-empty {
+  margin: 0;
+  color: var(--lab-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  /* 六列塞不进 390px，所以换成四列 × 三行:名字 + 箭头 / 条形 / 三个数字。
+     列宽还是定义在列表上（行仍然是 subgrid），行内位置逐个写死 —— 不写的话
+     第 6 个子元素会被自动排到第二行第一列，箭头就孤零零占一行。 */
+  .feed-repo-list {
+    grid-template-columns: auto auto minmax(0, 1fr) 14px;
+    column-gap: 12px;
+  }
+
+  .feed-repo {
+    row-gap: 9px;
+  }
+
+  .feed-repo-name    { grid-area: 1 / 1 / 2 / 4; }
+  .feed-arrow        { grid-area: 1 / 4 / 2 / 5; align-self: start; }
+  .feed-bar          { grid-area: 2 / 1 / 3 / 5; }
+  .feed-count-merged { grid-area: 3 / 1 / 4 / 2; }
+  .feed-count-total  { grid-area: 3 / 2 / 4 / 3; }
+  .feed-repo-span    { grid-area: 3 / 3 / 4 / 5; }
+
+  .feed-portfolio-link {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-repo,
+  .feed-pr,
+  .feed-arrow {
+    transition: none;
+  }
+
+  /* hover 时的位移也一起去掉，只留背景色。.feed-pr 回到它的基础 padding-left。 */
+  .feed-pr:hover {
+    padding-left: 4px;
+  }
+
+  .feed-repo:hover .feed-arrow {
+    transform: none;
+  }
+}

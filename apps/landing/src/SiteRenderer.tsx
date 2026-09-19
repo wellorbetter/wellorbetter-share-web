@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { DeveloperPortfolio, PortfolioContribution, PortfolioProject } from "./portfolio.js";
 import type { SiteGeneration, SiteSectionType, SiteSpec } from "./site-spec.js";
 import { resolvedPresentation } from "./presentation.js";
+import { contributionStatus } from "./contribution-feed.js";
 import { SITE_AGENT_PATH } from "./routes.js";
 
 type Props = { generation: SiteGeneration; spec?: SiteSpec; studio?: boolean };
@@ -13,7 +14,7 @@ const copy = {
 
 function projectByName(portfolio: DeveloperPortfolio, fullName: string): PortfolioProject | undefined { return portfolio.projects.find((item) => item.fullName === fullName); }
 function contributionByKey(portfolio: DeveloperPortfolio, key: string): PortfolioContribution | undefined { return portfolio.contributions.find((item) => `${item.repository}#${item.number}` === key); }
-function status(item: PortfolioContribution, locale: SiteSpec["locale"]): string { const t = copy[locale]; return item.merged ? t.merged : item.state === "open" ? t.open : t.closed; }
+function status(item: PortfolioContribution, locale: SiteSpec["locale"]): string { return copy[locale][contributionStatus(item)]; }
 
 function SectionShell({ id, eyebrow, title, subtitle, children }: { id: string; eyebrow: string; title: string; subtitle?: string; children: ReactNode }) {
   return <section id={id} className="generated-section"><div className="generated-section-heading"><span>{eyebrow}</span><div><h2>{title}</h2>{subtitle ? <p>{subtitle}</p> : null}</div></div>{children}</section>;
@@ -31,7 +32,7 @@ function Projects({ spec, portfolio, title, subtitle }: { spec: SiteSpec; portfo
 }
 
 function Contributions({ spec, portfolio, title, subtitle }: { spec: SiteSpec; portfolio: DeveloperPortfolio; title: string; subtitle?: string }) {
-  return <SectionShell id="contributions" eyebrow="02 / CONTRIBUTE" title={title} subtitle={subtitle}><div className="generated-contribution-list">{spec.contributions.map((entry) => { const item = contributionByKey(portfolio, entry.key); if (!item) return null; return <a href={item.url} target="_blank" rel="noreferrer" className="generated-contribution" key={entry.key}><div><div className="generated-contribution-meta"><span>{item.repository}</span><span>#{item.number}</span><b className={item.merged ? "is-merged" : item.state === "open" ? "is-open" : ""}>{status(item, spec.locale)}</b></div><h3>{entry.headline}</h3><p>{entry.whyItMatters}</p></div><span className="generated-contribution-arrow">↗</span></a>; })}</div></SectionShell>;
+  return <SectionShell id="contributions" eyebrow="02 / CONTRIBUTE" title={title} subtitle={subtitle}><div className="generated-contribution-list">{spec.contributions.map((entry) => { const item = contributionByKey(portfolio, entry.key); if (!item) return null; return <a href={item.url} target="_blank" rel="noreferrer" className="generated-contribution" key={entry.key}><div><div className="generated-contribution-meta"><span>{item.repository}</span><span>#{item.number}</span><b className={`is-${contributionStatus(item)}`}>{status(item, spec.locale)}</b></div><h3>{entry.headline}</h3><p>{entry.whyItMatters}</p></div><span className="generated-contribution-arrow">↗</span></a>; })}</div></SectionShell>;
 }
 
 function Activity({ spec, portfolio, title, subtitle }: { spec: SiteSpec; portfolio: DeveloperPortfolio; title: string; subtitle?: string }) {
