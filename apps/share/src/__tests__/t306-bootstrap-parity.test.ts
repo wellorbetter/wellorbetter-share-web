@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import htmlSource from "../../index.html?raw";
 import bootSource from "../../public/theme-boot.js?raw";
 import appearanceSource from "../lib/appearance.ts?raw";
+import themeSource from "../../../../packages/design/src/theme.ts?raw";
 import { BACKGROUND_PRESETS } from "../lib/appearance";
 
 /**
@@ -46,11 +47,88 @@ describe("T306 background preset bootstrap parity", () => {
     });
   }
 
-  it("bootstrap reads the same localStorage keys the module writes", () => {
+  it("bootstrap reads the same keys its sources of truth write", () => {
+    // wb-theme 的主人搬去了 packages/design（四个站共用的 cookie），
+    // wb-bg 还是 share 自己的。两个名字都得在 bootstrap 里出现，否则它读的是
+    // 别人没写的东西 —— 而那种错法不会报错，只会让首屏闪回默认值。
+    expect(themeSource, 'packages/design/src/theme.ts should own the "wb-theme" key').toContain(
+      '"wb-theme"',
+    );
+    expect(appearanceSource, 'appearance.ts should own the "wb-bg" key').toContain('"wb-bg"');
     for (const key of ["wb-theme", "wb-bg"]) {
-      expect(appearanceSource, `appearance.ts should own the "${key}" key`).toContain(`"${key}"`);
       expect(bootSource, `theme-boot.js should read "${key}"`).toContain(`"${key}"`);
     }
+  });
+});
+
+/**
+ * bootstrap 现在自己解析 cookie（因为 import 不了 design 那份），所以光对比
+ * 字面量已经不够了 —— 逻辑也会漂。下面这组把它**真的跑一遍**。
+ *
+ * 不需要造假的 document / localStorage：这个 workspace 的 vitest 跑在 jsdom
+ * 里，document.cookie 和 localStorage 都是真的，boot 用的也正是这两个全局。
+ */
+describe("theme-boot.js 的实际行为", () => {
+  function runBoot(): void {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function(bootSource)();
+  }
+
+  beforeEach(() => {
+    for (const pair of document.cookie.split(";")) {
+      const name = pair.split("=")[0]?.trim();
+      if (name) document.cookie = `${name}=; Path=/; Max-Age=0`;
+    }
+    localStorage.clear();
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.style.removeProperty("--app-bg-image");
+  });
+
+  it("读跨子域 cookie —— 这是整件事的目的", () => {
+    document.cookie = "wb-theme=dark; Path=/";
+    runBoot();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("cookie 赢 localStorage（上次可能是在博客上改的）", () => {
+    localStorage.setItem("wb-theme", "light");
+    document.cookie = "wb-theme=dark; Path=/";
+    runBoot();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("只有 localStorage 时仍然认 —— 老访客的选择不能被这次发布清空", () => {
+    localStorage.setItem("wb-theme", "dark");
+    runBoot();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("名字不能是包含匹配", () => {
+    document.cookie = "my-wb-theme=dark; Path=/";
+    runBoot();
+    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+  });
+
+  it("system / 没选过 / 垃圾值都不写属性", () => {
+    // 属性没写才等于跟随系统。写一个此刻算出来的具体值，访客在页面开着的时候
+    // 切系统主题就不跟了 —— 这正是搬到 cookie 之前的旧行为。
+    for (const value of ["system", "sepia"]) {
+      document.documentElement.setAttribute("data-theme", "dark"); // 脏状态
+      document.cookie = `wb-theme=${value}; Path=/`;
+      runBoot();
+      expect(document.documentElement.hasAttribute("data-theme"), value).toBe(false);
+    }
+    document.cookie = "wb-theme=; Path=/; Max-Age=0";
+    document.documentElement.setAttribute("data-theme", "dark");
+    runBoot();
+    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+  });
+
+  it("背景预设也在首屏就写上", () => {
+    localStorage.setItem("wb-bg", "aurora");
+    runBoot();
+    const preset = BACKGROUND_PRESETS.find((p) => p.id === "aurora")!;
+    expect(document.documentElement.style.getPropertyValue("--app-bg-image")).toBe(preset.css);
   });
 });
 

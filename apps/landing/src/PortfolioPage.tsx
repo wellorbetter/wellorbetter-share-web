@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from "react";
 import { icon } from "@wellorbetter/design";
 import { fetchPortfolio, portfolioPath } from "./portfolio.js";
 import type { DeveloperPortfolio, PortfolioContribution } from "./portfolio.js";
+import { useThemeToggle } from "./theme.js";
 
 type Locale = "zh" | "en";
 
@@ -219,23 +220,13 @@ function Calendar({ portfolio }: { portfolio: DeveloperPortfolio }) {
 
 export default function PortfolioPage({ username }: { username: string }) {
   const [locale, setLocale] = useState<Locale>(() => localStorage.getItem("wb_locale") === "en" ? "en" : "zh");
-  const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem("wb_dark");
-    if (saved === "1") return true;
-    if (saved === "0") return false;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const { dark, toggle: toggleDark } = useThemeToggle();
   const [recruiterMode, setRecruiterMode] = useState(() => new URLSearchParams(window.location.search).get("view") === "recruiter");
   const [query, setQuery] = useState(username);
   const [portfolio, setPortfolio] = useState<DeveloperPortfolio | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const t = text[locale];
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-    localStorage.setItem("wb_dark", dark ? "1" : "0");
-  }, [dark]);
 
   useEffect(() => {
     localStorage.setItem("wb_locale", locale);
@@ -295,7 +286,7 @@ export default function PortfolioPage({ username }: { username: string }) {
         </form>
         <div className="portfolio-top-actions">
           <button type="button" className={`portfolio-recruiter-toggle${recruiterMode ? " is-active" : ""}`} onClick={toggleRecruiter} title={t.recruiterHint}>{recruiterMode ? t.full : t.recruiter}</button>
-          <button type="button" onClick={() => setDark((value) => !value)} aria-label="theme" dangerouslySetInnerHTML={{ __html: icon(dark ? "sun" : "moon", 17) }} />
+          <button type="button" onClick={toggleDark} aria-label="theme" dangerouslySetInnerHTML={{ __html: icon(dark ? "sun" : "moon", 17) }} />
           <button type="button" onClick={() => setLocale((value) => value === "zh" ? "en" : "zh")}>{locale === "zh" ? "EN" : "中"}</button>
         </div>
       </header>

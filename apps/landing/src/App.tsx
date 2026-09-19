@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent, SyntheticEvent } from "react";
 import { icon } from "@wellorbetter/design";
+import { useThemeToggle } from "./theme.js";
 
 type Locale = "zh" | "en";
 type Visual = "image" | "terminal" | "upload";
@@ -280,18 +281,8 @@ export default function App() {
     const saved = localStorage.getItem("wb_locale");
     return saved === "en" ? "en" : "zh";
   });
-  const [dark, setDark] = useState<boolean>(() => {
-    const saved = localStorage.getItem("wb_dark");
-    if (saved === "1") return true;
-    if (saved === "0") return false;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const { dark, toggle: toggleDark } = useThemeToggle();
   const landingRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-    localStorage.setItem("wb_dark", dark ? "1" : "0");
-  }, [dark]);
 
   useEffect(() => {
     localStorage.setItem("wb_locale", locale);
@@ -300,7 +291,6 @@ export default function App() {
 
   const t = copy[locale];
 
-  const toggleDark = useCallback(() => setDark((value) => !value), []);
   const toggleLocale = useCallback(() => setLocale((value) => (value === "zh" ? "en" : "zh")), []);
 
   const handlePointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {

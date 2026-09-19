@@ -11,16 +11,32 @@
  * 得同步哈希，忘了就又变成静默失效 —— 跟刚修掉的这个 bug 一模一样的失败
  * 方式。外部文件走 'self'，改动不需要任何人记得同步什么。
  *
- * 这里的渐变字面量是 lib/appearance.ts 里 BACKGROUND_PRESETS 的副本：这段
- * 代码跑在 bundle 存在之前，import 不了。这份重复是必要的，由
+ * 这里的渐变字面量是 lib/appearance.ts 里 BACKGROUND_PRESETS 的副本，读
+ * cookie 的那几行是 packages/design/src/theme.ts 的副本：这段代码跑在 bundle
+ * 存在之前，import 不了。这份重复是必要的，由
  * __tests__/t306-bootstrap-parity.test.ts 钉住，漂了就会红。
  */
 (function () {
   try {
-    var t = localStorage.getItem("wb-theme");
-    var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    var attr = t === "light" || t === "dark" ? t : dark ? "dark" : "light";
-    document.documentElement.dataset.theme = attr;
+    // 明暗选择的真相是 wb-theme cookie（Domain=.wellorbetterai.com，跨子域，
+    // 博客那边在服务端读同一个）。localStorage 只是老访客的迁移兜底。
+    var t;
+    var cookies = document.cookie ? document.cookie.split(";") : [];
+    for (var i = 0; i < cookies.length; i++) {
+      var eq = cookies[i].indexOf("=");
+      if (eq < 0) continue;
+      // 名字要整个对上：`my-wb-theme` 不是我们的。
+      if (cookies[i].slice(0, eq).trim() !== "wb-theme") continue;
+      t = cookies[i].slice(eq + 1).trim();
+      break;
+    }
+    if (t !== "light" && t !== "dark" && t !== "system") t = localStorage.getItem("wb-theme");
+
+    // "system"（以及没选过）**不写**属性 —— tokens.ts 里属性没写才等于跟随
+    // 系统。写一个此刻算出来的具体值，访客在页面开着的时候切系统主题就不跟了。
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    else delete document.documentElement.dataset.theme;
+
     var bg = localStorage.getItem("wb-bg");
     var map = {
       aurora:

@@ -1,19 +1,30 @@
 /**
- * Theme & background management (T306).
+ * 外观：背景预设（T306）+ 明暗选择的转发层。
  *
- * - Theme: light / dark / system, persisted to localStorage, applied via
- *   `data-theme` on <html> (manual choice overrides prefers-color-scheme,
- *   matching packages/design tokens).
- * - Background: replaceable app background via the `--app-bg-image` token.
- *   Presets are pure CSS gradients — no copyrighted assets. "none" resets.
- * - No-flash bootstrap: public/theme-boot.js runs applyThemeFromStorage() before
- *   the bundle loads; this hook keeps React state in sync with it. It lives in
- *   public/ rather than inline in index.html because the page declares
- *   `script-src 'self'` with no 'unsafe-inline' — inlined, it was silently
- *   blocked and never ran. See __tests__/t306-bootstrap-parity.test.ts.
+ * ── 明暗不在这里了 ─────────────────────────────────────────────────────────
+ * 明暗选择搬到了 packages/design/src/theme.ts，因为它跨四个站：落地页、
+ * vibecoding、share、blog 共用一个 `wb-theme` cookie（Domain=.wellorbetterai.com）。
+ * 原来存在 localStorage 里，而 localStorage 按 origin 隔离 —— 访客在 share 上
+ * 选了深色，翻到 blog.wellorbetterai.com 又变回浅色。那不是 bug，是
+ * localStorage 的定义。博客那边在服务端读同一个 cookie 直接渲进 <html>。
+ *
+ * 背景预设留在这里：它只有 share 有，落地页和博客没有这个概念。
+ *
+ * ── 首屏不闪 ───────────────────────────────────────────────────────────────
+ * public/theme-boot.js 在 bundle 之前跑，把主题和背景先写上。它在 public/ 而
+ * 不是内联在 index.html 里，是因为页面自己声明了 `script-src 'self'`（没有
+ * 'unsafe-inline'）—— 内联的时候它被静默拦掉，从来没执行过。见
+ * __tests__/t306-bootstrap-parity.test.ts。
  */
 
-export type ThemeChoice = "light" | "dark" | "system";
+import {
+  applyThemeChoice,
+  readThemeChoice,
+  writeThemeChoice,
+  type ThemeChoice,
+} from "@wellorbetter/design";
+
+export type { ThemeChoice };
 
 export interface BackgroundPreset {
   id: string;
@@ -47,24 +58,10 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   },
 ];
 
-const THEME_KEY = "wb-theme";
 const BG_KEY = "wb-bg";
 
-/** Resolve a stored theme choice to the concrete attribute value. */
-export function resolveThemeAttr(choice: ThemeChoice, prefersDark: boolean): "light" | "dark" {
-  if (choice === "system") return prefersDark ? "dark" : "light";
-  return choice;
-}
-
-export function readStoredTheme(): ThemeChoice {
-  try {
-    const v = localStorage.getItem(THEME_KEY);
-    if (v === "light" || v === "dark" || v === "system") return v;
-  } catch {
-    /* storage unavailable — default below */
-  }
-  return "system";
-}
+/** 明暗选择的读取入口。cookie 优先、localStorage 迁移兜底，都在 design 里。 */
+export const readStoredTheme = readThemeChoice;
 
 export function readStoredBackground(): string {
   try {
@@ -76,19 +73,23 @@ export function readStoredBackground(): string {
   return "none";
 }
 
-/** Apply theme attribute + background token to the document. */
+/**
+ * Apply theme attribute + background token to the document.
+ *
+ * theme 为 "system" 时会**删掉** data-theme —— tokens.ts 的契约是属性没写才
+ * 等于跟随系统。以前这里写的是 `prefersDark ? "dark" : "light"`，等于把「跟随
+ * 系统」锁死在页面加载那一刻的系统值。
+ */
 export function applyAppearance(theme: ThemeChoice, backgroundId: string): void {
-  const prefersDark =
-    typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches;
-  document.documentElement.dataset.theme = resolveThemeAttr(theme, prefersDark);
+  applyThemeChoice(theme);
 
   const preset = BACKGROUND_PRESETS.find((p) => p.id === backgroundId) ?? BACKGROUND_PRESETS[0]!;
   document.documentElement.style.setProperty("--app-bg-image", preset.css);
 }
 
 export function persistAppearance(theme: ThemeChoice, backgroundId: string): void {
+  writeThemeChoice(theme);
   try {
-    localStorage.setItem(THEME_KEY, theme);
     localStorage.setItem(BG_KEY, backgroundId);
   } catch {
     /* storage unavailable — appearance still applies for this session */
