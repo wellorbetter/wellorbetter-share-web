@@ -1,24 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent, SyntheticEvent } from "react";
 import { icon } from "@wellorbetter/design";
+import {
+  PROJECT_SNAPSHOT,
+  injectedProjectCards,
+  toLandingProjects,
+} from "./projects.js";
+import type { LandingProject, Locale } from "./projects.js";
 import { useThemeToggle } from "./theme.js";
-
-type Locale = "zh" | "en";
-type Visual = "image" | "terminal" | "upload";
-type Size = "wide" | "compact";
-
-type Project = {
-  readonly name: string;
-  readonly kicker: string;
-  readonly desc: string;
-  readonly status: string;
-  readonly href: string;
-  readonly tags: readonly string[];
-  readonly visual: Visual;
-  readonly size: Size;
-  readonly image?: string;
-  readonly imageAlt?: string;
-};
 
 const copy = {
   zh: {
@@ -30,85 +19,10 @@ const copy = {
     heroPrimary: "看最近作品",
     heroSecondary: "逛 GitHub",
     signalLabel: "最近在做",
-    signalItems: [
-      ["TimeTrace", "本地优先 · Windows"],
-      ["cxs", "Codex session CLI"],
-      ["Window Stats", "DeepSeek Harness plugin"],
-    ],
     stack: ["Rust", "Flutter", "React", "TypeScript", "AI Agents", "Local-first", "Open Source"],
     projectEyebrow: "RECENT SHIPS",
     projectTitle: "不是 demo 墙，是我真的在用的东西。",
     projectSub: "每个项目都从一个具体痛点开始。能开源的尽量开源，能本地跑的尽量不依赖云。",
-    projects: [
-      {
-        name: "TimeTrace",
-        kicker: "本地使用统计 + 日记",
-        desc: "Rust 核心 + Flutter UI。记录应用活跃时长、日历与回顾，所有数据只留在本机。",
-        status: "已发布",
-        href: "https://github.com/wellorbetter/timetrace",
-        tags: ["Rust", "Flutter", "SQLite"],
-        visual: "image",
-        size: "wide",
-        image: "https://raw.githubusercontent.com/wellorbetter/timetrace/main/docs/screenshots/dashboard-bar.png",
-        imageAlt: "TimeTrace dashboard",
-      },
-      {
-        name: "AI 进程管家",
-        kicker: "Coding agent session manager",
-        desc: "把 Codex、Claude、Gemini、OpenCode 等 agent 的进程和本地会话整理成一个可读、可恢复的桌面工具。",
-        status: "已发布",
-        href: "https://github.com/wellorbetter/ai-process-manager",
-        tags: ["Rust", "Flutter", "Windows"],
-        visual: "image",
-        size: "compact",
-        image: "https://raw.githubusercontent.com/wellorbetter/ai-process-manager/master/docs/screenshots/main.png",
-        imageAlt: "AI Process Manager",
-      },
-      {
-        name: "Amadeus",
-        kicker: "本地优先 AI 桌宠",
-        desc: "Flutter + Live2D 的 Windows AI 陪伴桌宠，可选择读取 TimeTrace 本地数据，让角色感知你正在做什么。",
-        status: "实验中",
-        href: "https://github.com/wellorbetter/amadeus-desktop",
-        tags: ["Flutter", "Live2D", "AI"],
-        visual: "image",
-        size: "compact",
-        image: "https://raw.githubusercontent.com/wellorbetter/amadeus-desktop/main/assets/docs/screenshots/pet.png",
-        imageAlt: "Amadeus desktop pet",
-      },
-      {
-        name: "cxs",
-        kicker: "Zero-token Codex session finder",
-        desc: "只读扫描本地 Codex 元数据，快速找到“刚才哪个会话在做这件事”，然后安全交给原生 Codex resume。",
-        status: "Alpha",
-        href: "https://github.com/wellorbetter/cxs",
-        tags: ["Rust", "CLI", "Local-only"],
-        visual: "terminal",
-        size: "wide",
-      },
-      {
-        name: "Window Stats",
-        kicker: "DeepSeek Harness plugin",
-        desc: "跨会话查看运行状态、token、上下文占用、耗时和成本，再下钻到单个 session 的趋势和热力图。",
-        status: "Plugin",
-        href: "https://github.com/wellorbetter/dsh-plugin-window-stats",
-        tags: ["TypeScript", "Analytics", "Plugin"],
-        visual: "image",
-        size: "wide",
-        image: "https://raw.githubusercontent.com/wellorbetter/dsh-plugin-window-stats/main/assets/window-stats.png",
-        imageAlt: "Window Stats overview",
-      },
-      {
-        name: "File Share",
-        kicker: "轻量文件分享",
-        desc: "React + Cloudflare 的文件分享小工具，也是这套个人站点和设计系统最早落地的一块。",
-        status: "在线",
-        href: "https://share.wellorbetterai.com",
-        tags: ["React", "Cloudflare", "R2"],
-        visual: "upload",
-        size: "compact",
-      },
-    ] satisfies readonly Project[],
     principleEyebrow: "HOW I BUILD",
     principleTitle: "先做成，再做对，再做好看。",
     principles: [
@@ -130,85 +44,10 @@ const copy = {
     heroPrimary: "See recent work",
     heroSecondary: "Explore GitHub",
     signalLabel: "Building lately",
-    signalItems: [
-      ["TimeTrace", "local-first · Windows"],
-      ["cxs", "Codex session CLI"],
-      ["Window Stats", "DeepSeek Harness plugin"],
-    ],
     stack: ["Rust", "Flutter", "React", "TypeScript", "AI Agents", "Local-first", "Open Source"],
     projectEyebrow: "RECENT SHIPS",
     projectTitle: "Not a demo wall. Things I actually use.",
     projectSub: "Each project starts from a concrete pain point. I keep it open source when I can, and local-first whenever that makes sense.",
-    projects: [
-      {
-        name: "TimeTrace",
-        kicker: "Local activity tracking + journal",
-        desc: "A Rust core with a Flutter UI for app activity, calendar views and recaps, with all personal data staying on-device.",
-        status: "Shipped",
-        href: "https://github.com/wellorbetter/timetrace",
-        tags: ["Rust", "Flutter", "SQLite"],
-        visual: "image",
-        size: "wide",
-        image: "https://raw.githubusercontent.com/wellorbetter/timetrace/main/docs/screenshots/dashboard-bar.png",
-        imageAlt: "TimeTrace dashboard",
-      },
-      {
-        name: "AI Process Manager",
-        kicker: "Coding agent session manager",
-        desc: "A desktop view over Codex, Claude, Gemini, OpenCode and other coding-agent processes and their local sessions.",
-        status: "Shipped",
-        href: "https://github.com/wellorbetter/ai-process-manager",
-        tags: ["Rust", "Flutter", "Windows"],
-        visual: "image",
-        size: "compact",
-        image: "https://raw.githubusercontent.com/wellorbetter/ai-process-manager/master/docs/screenshots/main.png",
-        imageAlt: "AI Process Manager",
-      },
-      {
-        name: "Amadeus",
-        kicker: "Local-first AI desktop companion",
-        desc: "A Flutter + Live2D Windows companion that can optionally read local TimeTrace data and react to what is happening on your desktop.",
-        status: "Experiment",
-        href: "https://github.com/wellorbetter/amadeus-desktop",
-        tags: ["Flutter", "Live2D", "AI"],
-        visual: "image",
-        size: "compact",
-        image: "https://raw.githubusercontent.com/wellorbetter/amadeus-desktop/main/assets/docs/screenshots/pet.png",
-        imageAlt: "Amadeus desktop pet",
-      },
-      {
-        name: "cxs",
-        kicker: "Zero-token Codex session finder",
-        desc: "A read-only local CLI that finds the Codex session doing a specific job and delegates resume back to native Codex.",
-        status: "Alpha",
-        href: "https://github.com/wellorbetter/cxs",
-        tags: ["Rust", "CLI", "Local-only"],
-        visual: "terminal",
-        size: "wide",
-      },
-      {
-        name: "Window Stats",
-        kicker: "DeepSeek Harness plugin",
-        desc: "Cross-session observability for progress, tokens, context pressure, duration and cost, with drill-down analytics for a single session.",
-        status: "Plugin",
-        href: "https://github.com/wellorbetter/dsh-plugin-window-stats",
-        tags: ["TypeScript", "Analytics", "Plugin"],
-        visual: "image",
-        size: "wide",
-        image: "https://raw.githubusercontent.com/wellorbetter/dsh-plugin-window-stats/main/assets/window-stats.png",
-        imageAlt: "Window Stats overview",
-      },
-      {
-        name: "File Share",
-        kicker: "Lightweight file sharing",
-        desc: "A small React + Cloudflare file-sharing tool, and the first live piece of this personal site and design system.",
-        status: "Live",
-        href: "https://share.wellorbetterai.com",
-        tags: ["React", "Cloudflare", "R2"],
-        visual: "upload",
-        size: "compact",
-      },
-    ] satisfies readonly Project[],
     principleEyebrow: "HOW I BUILD",
     principleTitle: "Make it exist. Make it right. Make it nice.",
     principles: [
@@ -223,7 +62,7 @@ const copy = {
   },
 } as const;
 
-function ProjectVisual({ project }: { project: Project }) {
+function ProjectVisual({ project }: { project: LandingProject }) {
   if (project.visual === "terminal") {
     return (
       <div className="terminal-preview" aria-hidden="true">
@@ -244,28 +83,18 @@ function ProjectVisual({ project }: { project: Project }) {
     );
   }
 
-  if (project.visual === "upload") {
-    return (
-      <div className="upload-preview" aria-hidden="true">
-        <div className="upload-orbit upload-orbit--one" />
-        <div className="upload-orbit upload-orbit--two" />
-        <div className="upload-drop">
-          <span dangerouslySetInnerHTML={{ __html: icon("upload", 28) }} />
-          <strong>drop / share</strong>
-          <small>share.wellorbetterai.com</small>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="project-image-wrap">
-      {project.image ? (
+      {project.cover ? (
         <img
           className="project-image"
-          src={project.image}
-          alt={project.imageAlt ?? ""}
+          src={project.cover.url}
+          // 封面是作品自己的截图，卡片上已经有标题和描述，重复一遍对读屏器是噪音。
+          alt=""
+          width={project.cover.width}
+          height={project.cover.height}
           loading="lazy"
+          decoding="async"
           onError={(event: SyntheticEvent<HTMLImageElement>) => {
             event.currentTarget.style.display = "none";
           }}
@@ -283,6 +112,16 @@ export default function App() {
   });
   const { dark, toggle: toggleDark } = useThemeToggle();
   const landingRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * 作品数据来自 worker 注进 <head> 的那份（见 projects.ts）。
+   *
+   * 在 useState 的初始化函数里读，而不是模块顶层：模块顶层只会执行一次，测试就
+   * 没法在两个 case 之间换掉注入的内容。拿不到就用快照 —— vite dev 不经过
+   * worker，走的就是这条路。
+   */
+  const [cards] = useState(() => injectedProjectCards(document) ?? PROJECT_SNAPSHOT);
+  const projects = useMemo(() => toLandingProjects(cards, locale), [cards, locale]);
 
   useEffect(() => {
     localStorage.setItem("wb_locale", locale);
@@ -366,12 +205,13 @@ export default function App() {
               <span className="signal-live"><i /> LIVE</span>
             </div>
             <div className="signal-list">
-              {t.signalItems.map(([name, meta], index) => (
-                <a key={name} href="#projects" className="signal-item">
+              {/* 「最近在做」以前是第三份手写的作品名单。现在就是作品库里最新的三个。 */}
+              {projects.slice(0, 3).map((project, index) => (
+                <a key={project.slug} href="#projects" className="signal-item">
                   <span className="signal-index">0{index + 1}</span>
                   <span className="signal-copy">
-                    <strong>{name}</strong>
-                    <small>{meta}</small>
+                    <strong>{project.name}</strong>
+                    <small>{project.kicker || project.tags.join(" · ")}</small>
                   </span>
                   <span className="signal-arrow" aria-hidden="true">↘</span>
                 </a>
@@ -407,13 +247,13 @@ export default function App() {
           </div>
 
           <div className="projects-grid">
-            {t.projects.map((project) => (
+            {projects.map((project) => (
               <a
                 className={`project-card project-card--${project.size} project-card--${project.visual}`}
                 href={project.href}
                 target="_blank"
                 rel="noreferrer"
-                key={project.name}
+                key={project.slug}
               >
                 <ProjectVisual project={project} />
                 <div className="project-content">
@@ -421,7 +261,7 @@ export default function App() {
                     <span className="project-status"><i /> {project.status}</span>
                     <span className="project-open" aria-hidden="true">↗</span>
                   </div>
-                  <p className="project-kicker">{project.kicker}</p>
+                  {project.kicker ? <p className="project-kicker">{project.kicker}</p> : null}
                   <h3>{project.name}</h3>
                   <p className="project-desc">{project.desc}</p>
                   <div className="project-tags">

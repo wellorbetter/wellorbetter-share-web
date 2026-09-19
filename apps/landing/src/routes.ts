@@ -75,6 +75,7 @@ export interface RouteMeta {
   lang: string;
 }
 
+/** 作品列表取不到时的兜底。名单是手写的，所以它一定会过期 —— 见 labMeta。 */
 const LAB_META: RouteMeta = {
   title: "wellorbetter — 把脑子里的小想法，做成真的能用的工具",
   description:
@@ -92,10 +93,30 @@ const SITE_AGENT_META: RouteMeta = {
   lang: "en",
 };
 
-export function routeMeta(route: Route): RouteMeta {
+/**
+ * lab 页的 meta。projectTitles 给了就用真的作品名，没给就用写死的那份。
+ *
+ * 这句 description 是链接预览和搜索结果里唯一会被读到的介绍，以前里面那串
+ * 「TimeTrace、cxs、Window Stats」是第三份手写的作品名单（另两份在 App.tsx 的
+ * copy.zh/copy.en 里）。worker 本来就为了注入卡片在边缘取了作品列表，顺手把这
+ * 句也换成真的，名单就不会再单独漂移。
+ *
+ * 只取前四个：description 超过 ~160 字符会被搜索结果截断。
+ */
+export function labMeta(projectTitles: readonly string[] = []): RouteMeta {
+  const named = projectTitles.slice(0, 4).join("、");
+  return {
+    ...LAB_META,
+    description: named
+      ? `wellorbetter 的 vibe coding lab：${named} 等等 —— 每个项目从一个具体痛点开始，能开源的开源，能本地跑的不依赖云。`
+      : LAB_META.description,
+  };
+}
+
+export function routeMeta(route: Route, projectTitles?: readonly string[]): RouteMeta {
   switch (route.kind) {
     case "lab":
-      return LAB_META;
+      return labMeta(projectTitles);
     case "site-agent":
       return SITE_AGENT_META;
     case "site":

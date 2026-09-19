@@ -591,6 +591,24 @@ a {
   grid-column: span 5;
 }
 
+/* 作品数是奇数时，最后一张没有搭子。占满整行，而不是在 12 列里留 5 列的空洞。 */
+.project-card--full {
+  grid-column: span 12;
+}
+
+/* 占满整行、又没有封面 —— 那块 265px 的网格底就是 1180px 宽的一片空白。窄卡上它
+   还能撑住栅格的节奏，整行宽度下只是个洞，所以这一种组合直接不要顶部视觉。
+   min-height 也要一起去掉：520px 是按「265px 视觉 + 文字」配的，只剩文字的话那
+   个高度会把标签顶到 300px 开外，空白只是从上面挪到了下面。
+   （封面是去 share 上传的，传了就变 image，这两条规则自动失效。） */
+.project-card--full.project-card--placeholder {
+  min-height: 0;
+}
+
+.project-card--full.project-card--placeholder .project-image-wrap {
+  display: none;
+}
+
 .project-card:hover {
   transform: translateY(-6px);
   border-color: color-mix(in srgb, var(--lab-accent) 42%, var(--lab-line));
@@ -598,8 +616,7 @@ a {
 }
 
 .project-image-wrap,
-.terminal-preview,
-.upload-preview {
+.terminal-preview {
   position: relative;
   min-height: 265px;
   overflow: hidden;
@@ -791,52 +808,6 @@ a {
 .terminal-prompt { color: #c8ef6f; }
 .terminal-dim { color: #747a84; padding-top: 8px; }
 
-.upload-preview {
-  min-height: 278px;
-  display: grid;
-  place-items: center;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--lab-accent-soft) 90%, var(--lab-panel-solid)), var(--lab-panel-solid));
-}
-
-.upload-drop {
-  position: relative;
-  z-index: 2;
-  width: min(76%, 260px);
-  min-height: 155px;
-  padding: 26px 18px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 9px;
-  border: 1px dashed color-mix(in srgb, var(--lab-accent) 45%, var(--lab-line));
-  border-radius: 22px;
-  color: var(--lab-accent);
-  background: color-mix(in srgb, var(--lab-panel) 72%, transparent);
-  box-shadow: 0 24px 55px color-mix(in srgb, var(--lab-accent) 13%, transparent);
-}
-
-.upload-drop strong {
-  color: var(--lab-text);
-  font-size: 17px;
-  letter-spacing: -0.03em;
-}
-
-.upload-drop small {
-  color: var(--lab-muted);
-  font-family: var(--font-mono);
-  font-size: 9px;
-}
-
-.upload-orbit {
-  position: absolute;
-  border: 1px solid color-mix(in srgb, var(--lab-accent) 20%, transparent);
-  border-radius: 50%;
-}
-
-.upload-orbit--one { width: 250px; height: 250px; }
-.upload-orbit--two { width: 360px; height: 360px; border-style: dashed; }
-
 .principles-section {
   position: relative;
   z-index: 2;
@@ -953,7 +924,8 @@ a {
   }
 
   .project-card--wide,
-  .project-card--compact {
+  .project-card--compact,
+  .project-card--full {
     grid-column: span 6;
   }
 
@@ -1059,7 +1031,8 @@ a {
   }
 
   .project-card--wide,
-  .project-card--compact {
+  .project-card--compact,
+  .project-card--full {
     grid-column: auto;
   }
 
@@ -1069,8 +1042,7 @@ a {
   }
 
   .project-image-wrap,
-  .terminal-preview,
-  .upload-preview {
+  .terminal-preview {
     min-height: 240px;
   }
 

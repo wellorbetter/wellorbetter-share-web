@@ -12,6 +12,13 @@ routes = [
 [assets]
 directory = "./dist"
 binding = "ASSETS"
+# 静态资源命中时默认**不会**执行 worker，所以根路径以前是直接吐 dist/index.html 的：
+# worker.ts 里那套 <title>/<meta> 改写对 / 从来没生效过，只有 /u/:name、/studio/:name
+# 这类「资源里没有的路径」才走到 worker。这件事一直没被发现，是因为 index.html 里写死
+# 的那份 meta 恰好就是 lab 的文案（routes.test.ts 钉了这个等式）—— 改写结果和不改写
+# 长得一样。现在根路径还要注入作品数据，就不能再靠巧合了。
+# 只列 /：其余资源（/assets/*、字体、favicon）继续由资源层直接返回，不进 worker。
+run_worker_first = ["/"]
 
 [observability]
 enabled = true
