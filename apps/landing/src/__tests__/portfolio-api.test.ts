@@ -399,6 +399,88 @@ describe("token 不对的时候", () => {
   });
 });
 
+describe("私有仓库不许出现在公开页上", () => {
+  /**
+   * 这一组钉的是「把 token 配好」这个纯可用性修复的副作用。
+   *
+   * GitHub 的搜索和 GraphQL contributionsCollection 都按**调用方能看见什么**返回。
+   * 没有 token 时可见范围就是公开的一切，所以这三条一直是对的；配上一个带 repo
+   * scope 的 token（classic token 默认就有）之后，同样的查询开始返回私有仓库的内容，
+   * 而这个 BFF 的输出直接渲染到 /u/:username 公开页。没有任何一步会报错。
+   */
+  it("搜索查询里必须有 is:public", async () => {
+    // 搜索返回的 item 里没有 private 字段，事后过滤不掉 —— 只能在查询里挡。
+    const { fetchImpl, calls } = githubStub();
+    vi.stubGlobal("fetch", fetchImpl);
+    await portfolioApi({ GITHUB_TOKEN: "ghp_with_repo_scope" }, "wellorbetter", deferred().ctx);
+    const searchCall = calls.find((u) => u.includes("/search/issues"));
+    expect(searchCall).toBeDefined();
+    expect(decodeURIComponent(searchCall!)).toContain("is:public");
+  });
+
+  it("仓库列表里带 private 的不进结果", async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request): Promise<Response> => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.includes("/graphql")) return Response.json({ data: { user: null } });
+      if (url.includes("/search/issues")) return Response.json({ total_count: 0, items: [] });
+      if (url.includes("/repos?"))
+        return Response.json([
+          ...REPOS,
+          { ...REPOS[0], name: "internal-thing", full_name: "bytedance/internal-thing", private: true, language: "Kotlin", stargazers_count: 999 },
+        ]);
+      return Response.json(USER);
+    });
+    vi.stubGlobal("fetch", fetchImpl);
+    const response = await portfolioApi({ GITHUB_TOKEN: "ghp_with_repo_scope" }, "wellorbetter", deferred().ctx);
+    const portfolio = (await response.json()) as DeveloperPortfolio;
+
+    expect(portfolio.projects.map((p) => p.fullName)).toEqual(["wellorbetter/timetrace"]);
+    // stars 是加总出来的，私有仓库漏进来的话这里会变成 1014 —— 数字本身也是泄露。
+    expect(portfolio.stats.stars).toBe(15);
+    expect(portfolio.stats.sourceRepos).toBe(1);
+    // 语言分布同样是从仓库推的，Kotlin 只存在于那个私有仓库里。
+    expect(portfolio.languages.map((l) => l.name)).not.toContain("Kotlin");
+  });
+
+  it("GraphQL 的最活跃仓库里私有的要过滤掉", async () => {
+    // 这条泄露的是 nameWithOwner，也就是内部仓库的名字。
+    const collection = {
+      contributionYears: [2026],
+      startedAt: "2025-09-19T00:00:00Z",
+      endedAt: "2026-09-19T00:00:00Z",
+      restrictedContributionsCount: 812,
+      totalCommitContributions: 900,
+      totalIssueContributions: 0,
+      totalPullRequestContributions: 0,
+      totalPullRequestReviewContributions: 0,
+      totalRepositoriesWithContributedCommits: 0,
+      totalRepositoriesWithContributedIssues: 0,
+      totalRepositoriesWithContributedPullRequests: 0,
+      totalRepositoriesWithContributedPullRequestReviews: 0,
+      contributionCalendar: { totalContributions: 900, weeks: [] },
+      commitContributionsByRepository: [
+        { repository: { nameWithOwner: "bytedance/secret-launcher", url: "https://github.com/bytedance/secret-launcher", isPrivate: true }, contributions: { totalCount: 700 } },
+        { repository: { nameWithOwner: "wellorbetter/timetrace", url: "https://github.com/wellorbetter/timetrace", isPrivate: false }, contributions: { totalCount: 40 } },
+      ],
+    };
+    const fetchImpl = vi.fn(async (input: string | URL | Request): Promise<Response> => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.includes("/graphql")) return Response.json({ data: { user: { contributionsCollection: collection } } });
+      if (url.includes("/search/issues")) return Response.json(PULLS);
+      if (url.includes("/repos?")) return Response.json(REPOS);
+      return Response.json(USER);
+    });
+    vi.stubGlobal("fetch", fetchImpl);
+    const response = await portfolioApi({ GITHUB_TOKEN: "ghp_with_repo_scope" }, "wellorbetter", deferred().ctx);
+    const portfolio = (await response.json()) as DeveloperPortfolio;
+
+    expect(portfolio.activity?.topCommitRepositories.map((r) => r.repository)).toEqual(["wellorbetter/timetrace"]);
+    // 聚合计数保留：只是数字，不说是哪个仓库，GitHub 自己的 profile 也这么显示。
+    expect(portfolio.activity?.restrictedContributions).toBe(812);
+    expect(portfolio.activity?.totalContributions).toBe(900);
+  });
+});
+
 describe("半残的数据不许进缓存", () => {
 
   it("只有 search 被限流：照样返回，但不留下来", async () => {

@@ -41,6 +41,8 @@ type GitHubRepo = {
   description: string | null;
   fork: boolean;
   archived: boolean;
+  /** 见 build 里的过滤。/users/:u/repos 文档说只返回公开仓库，这里不赌它。 */
+  private?: boolean;
   stargazers_count: number;
   forks_count: number;
   language: string | null;
@@ -88,7 +90,7 @@ type GraphqlActivity = {
           }>;
         };
         commitContributionsByRepository: Array<{
-          repository: { nameWithOwner: string; url: string };
+          repository: { nameWithOwner: string; url: string; isPrivate?: boolean };
           contributions: { totalCount: number };
         }>;
       };
@@ -118,7 +120,7 @@ query PortfolioActivity($login: String!) {
         weeks { contributionDays { date contributionCount contributionLevel } }
       }
       commitContributionsByRepository(maxRepositories: 12) {
-        repository { nameWithOwner url }
+        repository { nameWithOwner url isPrivate }
         contributions { totalCount }
       }
     }
@@ -228,6 +230,12 @@ async function activity(env: PortfolioEnv, username: string): Promise<PortfolioA
         week.contributionDays.map((day) => ({ date: day.date, count: day.contributionCount, level: day.contributionLevel })),
       ),
       topCommitRepositories: collection.commitContributionsByRepository
+        // GraphQL 的 contributionsCollection 按**token 持有者**的可见范围算，所以
+        // 这一条带 token 时会包含私有仓库 —— 而它暴露的是 nameWithOwner，也就是公司
+        // 内部仓库的名字，直接出现在公开页的「最活跃仓库」列表里。
+        // totalContributions / restrictedContributionsCount 这些聚合数字保留：那只是
+        // 计数，GitHub 自己的 profile 也是这么显示的，不泄露是哪个仓库。
+        .filter((item) => !item.repository.isPrivate)
         .map((item) => ({ repository: item.repository.nameWithOwner, url: item.repository.url, commits: item.contributions.totalCount }))
         .sort((a, b) => b.commits - a.commits),
     };
@@ -328,7 +336,16 @@ type BuildResult = {
 async function build(env: PortfolioEnv, username: string): Promise<BuildResult> {
   const encoded = encodeURIComponent(username);
   const search = new URL(`${GITHUB_API}/search/issues`);
-  search.searchParams.set("q", `author:${username} type:pr`);
+  // is:public 不是可选的收紧，是这个接口的安全边界。
+  //
+  // /search/issues 的结果按**调用方能看见什么**来算。没有 token 时那就是公开的
+  // 一切，于是这里长期是对的；一旦配上一个带 repo scope 的 token（classic token
+  // 默认就有），同一个查询开始返回私有仓库里的 PR —— 而这个 BFF 的输出是直接渲染
+  // 到 /u/:username 公开页上的。也就是说「把 token 配好」这个纯粹的可用性修复，会
+  // 顺手把公司内部仓库的 PR 标题发布到互联网上，没有任何一步会报错。
+  //
+  // 搜索返回的 item 里没有 private 字段，所以事后过滤不掉 —— 必须在查询里挡住。
+  search.searchParams.set("q", `author:${username} type:pr is:public`);
   search.searchParams.set("per_page", "100");
   search.searchParams.set("sort", "updated");
   search.searchParams.set("order", "desc");
@@ -353,7 +370,9 @@ async function build(env: PortfolioEnv, username: string): Promise<BuildResult> 
   }
 
   const user = userResult.data;
-  const repos = repoResult.data ?? [];
+  // 文档说 /users/:u/repos 只返回公开仓库，但这一层的输出会直接渲染到公开页上，
+  // 所以不把「文档这么说」当成边界 —— 一行过滤，换掉一整类事故。
+  const repos = (repoResult.data ?? []).filter((repo) => !repo.private);
   const pullSearch = pullResult.data ?? { total_count: 0, items: [] };
   const normalized = contributions(user.login, pullSearch.items);
   const source = repos.filter((repo) => !repo.fork && !repo.archived);
