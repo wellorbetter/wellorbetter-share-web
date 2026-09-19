@@ -1,6 +1,7 @@
 import { applyDeterministicEdit, createSiteSpec, isSiteSpec, repairSiteSpec, validateSiteSpec } from "./site-spec.js";
 import type { SiteEditResult, SiteGeneration, SiteLocale, SiteSpec } from "./site-spec.js";
 import { portfolioApi } from "./portfolio-api.js";
+import type { DeferredContext } from "./portfolio-api.js";
 import type { DeveloperPortfolio } from "./portfolio.js";
 
 const USERNAME_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
@@ -146,12 +147,17 @@ async function askForSpec(env: SiteAgentEnv, args: {
   }
 }
 
-async function portfolioOrResponse(request: Request, env: SiteAgentEnv, username: string): Promise<{ portfolio: DeveloperPortfolio } | { response: Response }> {
+/**
+ * 三个入口都从这里拿 portfolio，所以「GitHub 挂了怎么办」只在一个地方回答 ——
+ * 答案在 portfolio-api.ts 里（过期也先给旧的）。
+ *
+ * 以前这里要合成一个假 Request 才能调 portfolioApi，因为那边拿 request.url 当缓存
+ * 键。现在键是归一化的用户名，假 Request 也就不需要了。
+ */
+async function portfolioOrResponse(env: SiteAgentEnv, username: string, ctx: DeferredContext): Promise<{ portfolio: DeveloperPortfolio } | { response: Response }> {
   if (!USERNAME_RE.test(username)) return { response: error("invalid_username", "Invalid GitHub username", 400) };
   try {
-    const origin = new URL(request.url).origin;
-    const portfolioRequest = new Request(`${origin}/api/portfolio/${encodeURIComponent(username)}`, { headers: { Accept: "application/json" } });
-    const response = await portfolioApi(portfolioRequest, env, username);
+    const response = await portfolioApi(env, username, ctx);
     if (!response.ok) {
       if (response.status === 404) return { response: error("github_user_not_found", "GitHub user not found", 404) };
       return { response: error("github_unavailable", "GitHub data is temporarily unavailable", 502) };
@@ -177,7 +183,7 @@ function generation(portfolio: DeveloperPortfolio, spec: SiteSpec, mode: "determ
   };
 }
 
-export async function siteGetApi(request: Request, env: SiteAgentEnv, username: string): Promise<Response> {
+export async function siteGetApi(request: Request, env: SiteAgentEnv, username: string, ctx: DeferredContext): Promise<Response> {
   if (!USERNAME_RE.test(username)) return error("invalid_username", "Invalid GitHub username", 400);
   const url = new URL(request.url);
   const locale = normalizeLocale(url.searchParams.get("locale"));
@@ -187,21 +193,24 @@ export async function siteGetApi(request: Request, env: SiteAgentEnv, username: 
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
-  const result = await portfolioOrResponse(request, env, username);
+  const result = await portfolioOrResponse(env, username, ctx);
   if ("response" in result) return result.response;
   const spec = createSiteSpec(result.portfolio, intent, locale);
   const response = json(generation(result.portfolio, spec, "deterministic", env), 200, "public, max-age=180, s-maxage=900, stale-while-revalidate=1800");
-  await cache.put(cacheKey, response.clone());
+  // 这层缓存省的是 createSiteSpec 的 CPU，不是 GitHub 配额 —— 后者由 portfolio-api
+  // 自己那份「过期也先给」兜着。所以这里过期就直接重算，不需要自己管 stale
+  // （Cache API 不实现 swr：条目一过 s-maxage 就从 match 里消失，见 portfolio-api）。
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
   return response;
 }
 
-export async function siteGenerateApi(request: Request, env: SiteAgentEnv): Promise<Response> {
+export async function siteGenerateApi(request: Request, env: SiteAgentEnv, ctx: DeferredContext): Promise<Response> {
   const body = await readJson<GenerateBody>(request);
   const username = body?.username?.trim() ?? "";
   if (!body || !USERNAME_RE.test(username)) return error("invalid_request", "A valid GitHub username is required", 400);
   const locale = normalizeLocale(body.locale);
   const intent = normalizeIntent(body.intent);
-  const result = await portfolioOrResponse(request, env, username);
+  const result = await portfolioOrResponse(env, username, ctx);
   if ("response" in result) return result.response;
 
   const baseline = createSiteSpec(result.portfolio, intent, locale);
@@ -210,7 +219,7 @@ export async function siteGenerateApi(request: Request, env: SiteAgentEnv): Prom
   return json(generation(result.portfolio, aiSpec ?? baseline, aiSpec ? "ai" : "deterministic", env));
 }
 
-export async function siteEditApi(request: Request, env: SiteAgentEnv): Promise<Response> {
+export async function siteEditApi(request: Request, env: SiteAgentEnv, ctx: DeferredContext): Promise<Response> {
   const body = await readJson<EditBody>(request);
   const username = body?.username?.trim() ?? "";
   const instruction = normalizeIntent(body?.instruction);
@@ -218,7 +227,7 @@ export async function siteEditApi(request: Request, env: SiteAgentEnv): Promise<
     return error("invalid_request", "username, SiteSpec, and a short edit instruction are required", 400);
   }
   const locale = normalizeLocale(body.locale);
-  const result = await portfolioOrResponse(request, env, username);
+  const result = await portfolioOrResponse(env, username, ctx);
   if ("response" in result) return result.response;
   if (!isSiteSpec(body.spec)) return error("invalid_spec", "SiteSpec payload is invalid", 400);
 
