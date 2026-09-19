@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --port 5173",
     "build": "tsc --noEmit && vite build",
-    "deploy": "wrangler deploy",
+    "// deploy": "build first — wrangler deploy uploads whatever ./dist happens to hold, with no dependency on the source tree. Deploying without building ships the previous build: it succeeds, reports the uploaded asset count, and silently serves stale files. That is how the favicon and the font were declared, committed, merged, deployed, and still 404ing (PR #22).",
+    "deploy": "npm run build && wrangler deploy",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
