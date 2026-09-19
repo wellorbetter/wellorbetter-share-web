@@ -5,7 +5,29 @@
   Permissions-Policy: geolocation=(), microphone=(), camera=()
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+# NOT immutable, unlike /assets/* and /fonts/*. Those names carry a content hash,
+# so a new file is a new URL. "favicon.svg" is a fixed name, and this rule used to
+# say `max-age=31536000, immutable` — which would have pinned the mark for a year
+# per visitor with no way to bust it. (Harmless until now only because no such
+# file existed: the rule matched nothing, and the SPA fallback HTML that answered
+# /favicon.svg got max-age=0, must-revalidate from the asset layer instead —
+# verified live before shipping this.) A week is plenty for an icon.
 /favicon.svg
+  Cache-Control: public, max-age=604800
+/favicon.ico
+  Cache-Control: public, max-age=604800
+# public/ is copied verbatim per app — Vite does NOT hash these names, so the
+# content hash is in the filename by hand (fraunces-latin.48282a41.woff2). That is
+# what makes `immutable` honest: re-subsetting produces a new name instead of
+# leaving a year of returning visitors stuck on a file they cannot bust.
+#
+# The landing ships its own copy because @font-face lives in the *shared* token
+# sheet (packages/design/src/tokens.ts) with a same-origin src, and the browser
+# resolves that against whichever host served the CSS. Declared on both sites,
+# shipped on only share — so this origin silently fell back to Georgia. Nothing
+# noticed because no landing rule consumes var(--font-display) yet.
+# scripts/css-check.mjs now fails if the two copies diverge or go missing.
+/fonts/*
   Cache-Control: public, max-age=31536000, immutable
 /index.html
   Cache-Control: no-cache

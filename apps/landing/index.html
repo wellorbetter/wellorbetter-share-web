@@ -10,6 +10,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- .ico 先声明、svg 后声明：支持 SVG favicon 的浏览器取后者（于是标签页跟着
+         系统明暗切换），不支持的取 .ico。顺序反了在部分浏览器上就拿不到 svg。
+         两个文件同一套几何，见 public/favicon.svg 里的说明。 -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="description" content="wellorbetter 的 vibe coding lab：TimeTrace、cxs、Window Stats 等等 —— 每个项目从一个具体痛点开始，能开源的开源，能本地跑的不依赖云。" />
     <meta name="theme-color" content="#f3efe6" />
     <meta property="og:title" content="wellorbetter · Vibe Coding Lab" />
