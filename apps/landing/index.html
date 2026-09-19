@@ -1,14 +1,21 @@
 <!doctype html>
-<html lang="en">
+<!--
+  这里的 lang/title/meta 是**根路径**（wellorbetter 自己的站）的那一份，不是
+  所有路由共用的那一份 —— worker.ts 会按路由改写它们（见 src/routes.ts 的
+  routeMeta）。静态值写成根路径的内容，是为了让两件事都对：一是 vite dev /
+  vite preview 不经过 worker 时看到的是正确的默认；二是万一改写失败，兜底
+  兜到的是这个域名真正的主人，而不是跑到产品落地页上去。
+-->
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Personal Site Agent — give it a GitHub profile, get an editable personal website." />
+    <meta name="description" content="wellorbetter 的 vibe coding lab：TimeTrace、cxs、Window Stats 等等 —— 每个项目从一个具体痛点开始，能开源的开源，能本地跑的不依赖云。" />
     <meta name="theme-color" content="#f3efe6" />
-    <meta property="og:title" content="Personal Site Agent" />
-    <meta property="og:description" content="Drop your GitHub. Your personal site builds itself." />
+    <meta property="og:title" content="wellorbetter · Vibe Coding Lab" />
+    <meta property="og:description" content="把脑子里的小想法，做成真的能用的工具。" />
     <meta property="og:type" content="website" />
-    <title>Personal Site Agent — GitHub to personal website</title>
+    <title>wellorbetter — 把脑子里的小想法，做成真的能用的工具</title>
   </head>
   <body>
     <div id="root"></div>
