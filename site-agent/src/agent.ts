@@ -107,7 +107,10 @@ function heuristicSpec(snapshot: GitHubSnapshot, identity: Identity, curation: C
         key,
         headline: item.title,
         summary: `${item.merged ? "Merged" : item.state === "open" ? "Open" : "Closed"} upstream contribution to ${item.repository}.`,
-        whyItMatters: item.merged ? "Accepted by the upstream project and preserved as public engineering evidence." : "Shows active work in an external codebase.",
+        // 和 apps/landing/src/site-spec.ts 保持一致：留空，不写重复徽章的话。
+        // 这里能拿到的字段（title / state / merged / repository）已经全在卡片上了，
+        // 再写一句只能是换个说法重复一遍，或者编。
+        whyItMatters: "",
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null);
