@@ -10,6 +10,10 @@
  * 另外钉一条立场:**未合并的 PR 必须出现在页面上**。一个只显示 merged 的贡献页看起来
  * 就是精选，而这一页的意义恰好在于它不是。这条很容易在某次「让首屏好看一点」的改动里
  * 被悄悄加个 filter 干掉。
+ *
+ * 选择器跟过一次版本:第一版是「仓库排行表格 + 时间流」两段，18 行的表格撑到 1180px
+ * 很难看，改成了单列 feed —— 仓库那部分压成一行药丸。所以这里查的是 .feed-repo-pill
+ * 和 .feed-item。上面那三条立场一条没变，这也是重画之后它们还能被查的原因。
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -91,7 +95,7 @@ describe("加载与失败", () => {
       createRoot(host).render(<ContributionsPage username="wellorbetter" />);
     });
     expect(host.querySelector(".portfolio-loader")).not.toBeNull();
-    expect(host.querySelector(".feed-repo-list")).toBeNull();
+    expect(host.querySelector(".feed-stream")).toBeNull();
   });
 
   it("失败时把原始错误说出来，并给一个重试", async () => {
@@ -104,43 +108,39 @@ describe("加载与失败", () => {
     await act(async () => {
       host.querySelector<HTMLButtonElement>(".portfolio-state button")!.click();
     });
-    expect(host.querySelector(".feed-repo-list")).not.toBeNull();
+    expect(host.querySelector(".feed-stream")).not.toBeNull();
   });
 });
 
-describe("仓库排行", () => {
+describe("仓库药丸", () => {
   it("合并数排在提交数前面", async () => {
     jsonOnce(PORTFOLIO);
     const host = await render();
-    expect(texts(host, ".feed-repo-name b")).toEqual(["artemis", "repo", "Switchyard"]);
+    expect(texts(host, ".feed-repo-pill span")).toEqual(["artemis", "repo", "Switchyard"]);
   });
 
-  it("条形的段宽就是三类的真实条数", async () => {
+  it("药丸上的数字是「已合并 / 提交」，不是只报一个总数", async () => {
+    // 只显示总数的话 noisy/repo 会写成「3」,看起来比 artemis 的「1」更有分量,
+    // 而实际上那 3 条一条都没被接受。分子分母都得在。
     jsonOnce(PORTFOLIO);
     const host = await render();
-    const fill = host.querySelectorAll(".feed-repo")[1]!.querySelector(".feed-bar-fill")!;
-    const segments = [...fill.children].map((el) => [el.className, (el as HTMLElement).style.flexGrow]);
-    // noisy/repo 是 3 条 open、0 merged、0 closed。为 0 的段不渲染，否则 min-width
-    // 会画出一条不存在的 3px。
-    expect(segments).toEqual([["is-open", "3"]]);
+    expect(texts(host, ".feed-repo-pill b")).toEqual(["1/1", "0/3", "0/1"]);
   });
 
-  it("条形的长度是条数，不是每行都满格", async () => {
-    // 这条钉的是第一版的错:只有分段比例、没有量，于是 1 条的仓库和 3 条的仓库画出来
-    // 一样长。fixture 里最多的是 noisy/repo 的 3 条，所以它满格，1 条的占三分之一。
+  it("总览条的段宽就是三类的真实条数", async () => {
     jsonOnce(PORTFOLIO);
     const host = await render();
-    const widths = [...host.querySelectorAll<HTMLElement>(".feed-bar-fill")].map((el) => el.style.width);
-    expect(widths[0]).toBe(`${(1 / 3) * 100}%`);
-    expect(widths[1]).toBe("100%");
-    expect(new Set(widths).size).toBeGreaterThan(1);
+    const bar = host.querySelector(".feed-overview")!;
+    const segments = [...bar.children].map((el) => [el.className, (el as HTMLElement).style.flexGrow]);
+    // 1 merged / 3 open / 1 closed。为 0 的段不渲染，否则会画出一条不存在的细线。
+    expect(segments).toEqual([["is-merged", "1"], ["is-open", "3"], ["is-closed", "1"]]);
   });
 
   it("只统计提给别人仓库的", async () => {
     jsonOnce(PORTFOLIO);
     const host = await render();
     expect(host.textContent).not.toContain("timetrace");
-    expect(texts(host, ".portfolio-stat strong")[0]).toBe("5");
+    expect(texts(host, ".feed-summary b")[0]).toBe("5");
   });
 });
 
@@ -149,13 +149,13 @@ describe("时间流", () => {
     jsonOnce(PORTFOLIO);
     const host = await render();
     // 五月到八月是空的,页面上就该直接从 9 月跳到 4 月。
-    expect(texts(host, ".feed-month-head h3")).toEqual(["2026 年 9 月", "2026 年 4 月"]);
+    expect(texts(host, ".feed-month span")).toEqual(["2026 年 9 月", "2026 年 4 月"]);
   });
 
   it("每一条都点回真正的那个 PR", async () => {
     jsonOnce(PORTFOLIO);
     const host = await render();
-    const hrefs = [...host.querySelectorAll<HTMLAnchorElement>(".feed-pr")].map((el) => el.getAttribute("href"));
+    const hrefs = [...host.querySelectorAll<HTMLAnchorElement>(".feed-item")].map((el) => el.getAttribute("href"));
     expect(hrefs).toContain("https://github.com/NVIDIA-NeMo/Switchyard/pull/441");
     expect(hrefs).toHaveLength(5);
   });
@@ -166,13 +166,14 @@ describe("不藏没被合并的", () => {
     jsonOnce(PORTFOLIO);
     const host = await render();
     expect(host.textContent).toContain("Switchyard #441");
-    expect(texts(host, ".feed-status.is-closed")).toEqual(["未合并"]);
+    // 状态是 rail 上那个点的 class + 这一行里的一个词,两个都得对。
+    expect(texts(host, ".feed-item.is-closed .feed-item-status")).toEqual(["未合并"]);
   });
 
   it("顶部的数字把三类分开报，加起来等于总数", async () => {
     jsonOnce(PORTFOLIO);
     const host = await render();
-    const [total, merged, open, unmerged, repos] = texts(host, ".portfolio-stat strong");
+    const [total, merged, open, unmerged, repos] = texts(host, ".feed-summary b");
     expect([total, merged, open, unmerged, repos]).toEqual(["5", "1", "3", "1", "3"]);
     expect(Number(merged) + Number(open) + Number(unmerged)).toBe(Number(total));
   });
@@ -183,7 +184,9 @@ describe("空数据", () => {
     jsonOnce({ version: 2, profile: { login: "nobody" }, contributions: [] });
     const host = await render();
     expect(host.querySelector(".feed-empty")).not.toBeNull();
-    expect(host.querySelector(".feed-repo-list")).toBeNull();
-    expect(host.querySelector(".feed-timeline")).toBeNull();
+    expect(host.querySelector(".feed-stream")).toBeNull();
+    // 条和药丸都不该画 —— 一条空的比例条和一排没有内容的药丸比什么都不画更糟。
+    expect(host.querySelector(".feed-overview")).toBeNull();
+    expect(host.querySelector(".feed-repos")).toBeNull();
   });
 });

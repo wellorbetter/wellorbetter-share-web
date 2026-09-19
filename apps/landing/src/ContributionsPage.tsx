@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { icon } from "@wellorbetter/design";
 import { contributionsPath, fetchPortfolio, portfolioPath } from "./portfolio.js";
@@ -10,21 +10,34 @@ import {
   groupByMonth,
   groupByRepository,
 } from "./contribution-feed.js";
-import type { ContributionStatus, RepositoryGroup } from "./contribution-feed.js";
+import type { ContributionStatus } from "./contribution-feed.js";
 import { useThemeToggle } from "./theme.js";
 
 /**
  * 开源贡献页。
  *
- * 作品集页（/portfolio/:username）里 PR 只是一个 section，最多 12 条，剩下的看不见。
- * 这一页只讲贡献，而且全都给:两个视图，一份数据 —— 先「被哪些项目接受了」（按上游
- * 仓库分组、按 merged 数排），再「什么节奏」（按月的时间流）。
+ * 作品集页（/portfolio/:username）里 PR 只是一个 section，最多 12 条。这一页只讲贡献，
+ * 而且全都给：一条单列的时间流。
  *
- * 排序和分组的规则全在 contribution-feed.ts,那边有测试。这个文件只管画。
+ * 排序和分组的规则全在 contribution-feed.ts，那边有测试。这个文件只管画。
  *
- * 复用 portfolio.css 的外壳（topbar / state / section / stats），因为它们是同一个
- * --lab-* 家族、同一种页面。别往这里引 --psa-* 或 --site-* —— presentation.css 开头
- * 那段注释解释了为什么串家族的 bug 是看不见的。
+ * ── 为什么不复用 portfolio.css 的正文外壳 ──────────────────────────────────────
+ * 第一版直接套了 .portfolio-shell / .portfolio-section / .portfolio-stats，结果很难看，
+ * 原因是那套壳的尺寸是为**另一种内容**定的：
+ *
+ * - .portfolio-shell 是 1180px 宽。一个列表撑到 1180px，于是每行左边是仓库名、右边是
+ *   状态，中间留出上千像素的空洞 —— 一张被拉到 27 寸屏上的电子表格。
+ * - .portfolio-stats 是 3 列网格、每格 min-height 102px。六个数字于是变成六个巨大的
+ *   空盒子，还折成两行，底部糊成一块灰板。
+ * - .portfolio-section-heading 是 `120px | 1fr | 420px` 的 align-items:end 网格，为 52px
+ *   的大标题设计。放一个小标题进去，eyebrow 就掉到标题左下角、描述被甩到右边一千多
+ *   像素处，看起来像布局 bug。
+ *
+ * 所以正文自己开一个 760px 的阅读列。topbar 和 loading / error 态继续复用 —— 那两个
+ * 本来就是页面级的壳，尺寸上没有冲突。
+ *
+ * 别往这里引 --psa-* 或 --site-*，presentation.css 开头那段注释解释了为什么串家族的
+ * bug 是看不见的。
  */
 
 type Locale = "zh" | "en";
@@ -45,20 +58,14 @@ const text = {
     merged: "已合并",
     open: "进行中",
     unmerged: "未合并",
-    repositories: "上游仓库",
-    span: "时间跨度",
-    reposEyebrow: "WHERE",
-    reposTitle: "被哪些项目接受了",
-    reposSub: "按「合并数」排，不是按「提交数」—— 提得多不如被接受过。条形是这个仓库里已合并 / 进行中 / 未合并的比例。",
-    timelineEyebrow: "WHEN",
-    timelineTitle: "节奏",
-    timelineSub: "按月倒序。空掉的月份不补零 —— 那段空白本身是真的。",
-    statusMerged: "MERGED",
-    statusOpen: "OPEN",
+    repositories: "个上游仓库",
+    statusMerged: "已合并",
+    statusOpen: "进行中",
     statusClosed: "未合并",
-    prCount: (n: number) => `${n} 条`,
-    mergedCount: (n: number) => `合并 ${n}`,
+    reposHint: "被接受得最多的排在前面（已合并 / 提交）",
     monthCount: (n: number) => `${n} 条`,
+    overview: (merged: number, open: number, closed: number) =>
+      `已合并 ${merged}、进行中 ${open}、未合并 ${closed}`,
     empty: "这个账号在别人的仓库里还没有公开 PR",
     footer: "数据来自公开 GitHub · 服务端缓存 30 分钟",
   },
@@ -73,24 +80,20 @@ const text = {
     heroEyebrow: "OPEN SOURCE",
     heroTitle: "Pull requests sent to other people's repositories",
     heroSub: "All from public GitHub. Every row links back to the original PR — the flattering ones and the rest.",
-    total: "Upstream PRs",
-    merged: "Merged",
-    open: "Open",
-    unmerged: "Not merged",
-    repositories: "Upstream repos",
-    span: "Span",
-    reposEyebrow: "WHERE",
-    reposTitle: "Which projects accepted the work",
-    reposSub: "Ranked by merged count, not by volume — being accepted says more than submitting a lot. The bar is merged / open / not merged within that repo.",
-    timelineEyebrow: "WHEN",
-    timelineTitle: "Rhythm",
-    timelineSub: "Newest month first. Empty months are not padded with zeros — the gaps are real.",
+    total: "upstream PRs",
+    merged: "merged",
+    open: "open",
+    unmerged: "not merged",
+    repositories: "upstream repos",
     statusMerged: "MERGED",
     statusOpen: "OPEN",
-    statusClosed: "NOT MERGED",
-    prCount: (n: number) => `${n} PRs`,
-    mergedCount: (n: number) => `${n} merged`,
+    // 不是 "NOT MERGED":状态是 meta 行的第一个词，靠 min-width:5em 对成一列，而
+    // "NOT MERGED" 有 10 个字符会撑破那个宽度，让那几行的仓库名单独往右挪。
+    statusClosed: "UNMERGED",
+    reposHint: "Most-accepted first (merged / submitted)",
     monthCount: (n: number) => `${n} PRs`,
+    overview: (merged: number, open: number, closed: number) =>
+      `${merged} merged, ${open} open, ${closed} not merged`,
     empty: "No public pull requests to other people's repositories yet",
     footer: "Public GitHub data · server-cached for 30 minutes",
   },
@@ -101,7 +104,7 @@ const MONTH_NAMES_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", 
 /**
  * "2026-04" → "2026 年 4 月" / "Apr 2026"。
  *
- * 跟 contribution-feed.ts 里的 monthOf 一样**不经过 Date**:`new Date("2026-04")`
+ * 跟 contribution-feed.ts 里的 monthOf 一样**不经过 Date**：`new Date("2026-04")`
  * 按 UTC 解析但 getMonth() 按本地时区读，于是 UTC-5 的访客会看到标题写 3 月、里面
  * 装的是 4 月的 PR。切字符串就不会。
  */
@@ -118,53 +121,22 @@ function statusLabel(status: ContributionStatus, locale: Locale): string {
   return status === "open" ? t.statusOpen : t.statusClosed;
 }
 
-function PullRequestRow({ item, locale }: { item: PortfolioContribution; locale: Locale }) {
+function FeedItem({ item, locale }: { item: PortfolioContribution; locale: Locale }) {
   const status = contributionStatus(item);
   return (
-    <a className="feed-pr" href={item.url} target="_blank" rel="noreferrer">
-      <div className="feed-pr-main">
-        <div className="feed-pr-meta">
-          <span className="feed-pr-repo">{item.repository}</span>
-          <span>#{item.number}</span>
-          <time dateTime={item.createdAt}>{item.createdAt.slice(0, 10)}</time>
-        </div>
-        <h3>{item.title}</h3>
-      </div>
-      <span className={`feed-status is-${status}`}>{statusLabel(status, locale)}</span>
-    </a>
-  );
-}
-
-function RepositoryRow({ group, locale, maxTotal }: { group: RepositoryGroup; locale: Locale; maxTotal: number }) {
-  const t = text[locale];
-  return (
-    <a className="feed-repo" href={group.url} target="_blank" rel="noreferrer">
-      <div className="feed-repo-name">
-        <b>{group.name}</b>
-        <span>{group.owner}</span>
-      </div>
-      {/* 条形有两层，因为它要同时说两件事:
-          - 外层轨道满宽，内层 fill 的宽度 = 这个仓库的条数 / 最多的那个仓库，所以
-            **长度是量**。第一版只有内层，于是提了 1 条的 microsoft/mxc 和提了 17 条的
-            lawnchair 画出来一样长 —— 旁边的数字没说谎，但眼睛先看到的是条形。
-          - fill 里面的分段用 flex-grow = 条数，所以**分段比例是构成**（合并/进行中/
-            未合并）。count 为 0 的段不渲染，否则 min-width 会画出一条不存在的 3px。 */}
-      <div className="feed-bar" aria-hidden="true">
-        <div className="feed-bar-fill" style={{ width: `${(group.total / maxTotal) * 100}%` }}>
-          {group.merged > 0 ? <i className="is-merged" style={{ flexGrow: group.merged }} /> : null}
-          {group.open > 0 ? <i className="is-open" style={{ flexGrow: group.open }} /> : null}
-          {group.closed > 0 ? <i className="is-closed" style={{ flexGrow: group.closed }} /> : null}
-        </div>
-      </div>
-      {/* 这三个是 .feed-repo 的直接子元素而不是包在一个 div 里:行是 subgrid，各列的
-          宽度由整个列表统一决定，所以它们在所有行里对齐。包起来就只有外层那一列对齐，
-          里面的数字和日期还是每行自己排 —— 那是第一版看起来歪掉的原因。 */}
-      <b className="feed-count-merged">{t.mergedCount(group.merged)}</b>
-      <span className="feed-count-total">{t.prCount(group.total)}</span>
-      <span className="feed-repo-span">
-        {group.firstAt === group.lastAt ? group.firstAt : `${group.firstAt} → ${group.lastAt}`}
-      </span>
-      <span className="feed-arrow">↗</span>
+    // 状态既是 rail 上那个点的颜色（is-merged / is-open / is-closed），也是 meta 行里
+    // 的一个词。只靠颜色编码对色盲不成立，只靠词就失去了扫一眼看出节奏的能力。
+    <a className={`feed-item is-${status}`} href={item.url} target="_blank" rel="noreferrer">
+      <p className="feed-item-meta">
+        {/* 状态在最前面，不在行尾。理由写在 contributions.css 的 .feed-item-status 上：
+            顶到行尾就又是一段空洞，而这里放着能和 rail 上那个点对成一列。 */}
+        <span className="feed-item-status">{statusLabel(status, locale)}</span>
+        <span className="feed-item-repo">{item.repository}</span>
+        <span>#{item.number}</span>
+        {/* 只到「月-日」。年份由上面的月份分隔器给，重复一遍只是噪音。 */}
+        <time dateTime={item.createdAt}>{item.createdAt.slice(5, 10)}</time>
+      </p>
+      <h3>{item.title}</h3>
     </a>
   );
 }
@@ -200,10 +172,6 @@ export default function ContributionsPage({ username }: { username: string }) {
   const summary = useMemo(() => feedSummary(items), [items]);
   const repositories = useMemo(() => groupByRepository(items), [items]);
   const months = useMemo(() => groupByMonth(items), [items]);
-  // 条形长度的分母。repositories 已经排过序，但排序键是合并数不是总数，所以最大值
-  // 不一定在第一位 —— 得真的取 max。为 0 时用 1，避免除零（空数据那条分支不渲染
-  // 这一节，但一个只在别处成立的前提不该写进算式里）。
-  const maxTotal = useMemo(() => Math.max(1, ...repositories.map((group) => group.total)), [repositories]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -239,81 +207,85 @@ export default function ContributionsPage({ username }: { username: string }) {
           <button type="button" onClick={() => setReloadKey((value) => value + 1)}>{t.retry}</button>
         </main>
       ) : (
-        <main className="portfolio-shell">
+        <main className="feed-shell">
           <section className="feed-hero">
             <p className="feed-eyebrow">{t.heroEyebrow}</p>
             <h1>{t.heroTitle}</h1>
-            <p className="feed-hero-sub">
-              @{portfolio?.profile.login ?? username} · {t.heroSub}
-            </p>
-            <div className="portfolio-stats">
-              {[
-                { label: t.total, value: String(summary.total) },
-                { label: t.merged, value: String(summary.merged) },
-                { label: t.open, value: String(summary.open) },
-                { label: t.unmerged, value: String(summary.closed) },
-                { label: t.repositories, value: String(summary.repositories) },
-                // 唯一一个不是数字的格子。28px 的数字字号装不下 "2026-03 → 2026-09"，
-                // 窄屏上会折成两行还压住标签，所以单独给它一档小字号。
-                {
-                  label: t.span,
-                  value: summary.from && summary.to ? `${summary.from.slice(0, 7)} → ${summary.to.slice(0, 7)}` : "—",
-                  modifier: " is-range",
-                },
-              ].map(({ label, value, modifier }) => (
-                <div className={`portfolio-stat${modifier ?? ""}`} key={label}>
-                  <strong>{value}</strong>
-                  <span>{label}</span>
+            <p className="feed-hero-sub">@{portfolio?.profile.login ?? username} · {t.heroSub}</p>
+
+            {items.length > 0 ? (
+              <>
+                {/* 六个数字排成一行，不是六个盒子。第一版用 .portfolio-stats 的 3 列
+                    网格，每格 102px 高装一个两位数 —— 九成是空纸。
+                    每个数字连同它的标签包在一个 span 里，因为它们必须是同一个 flex
+                    item：分开的话窄屏上会断在中间，"18" 留在行尾、"个上游仓库" 掉到
+                    下一行开头。 */}
+                <p className="feed-summary">
+                  <span><b>{summary.total}</b> {t.total}</span>
+                  <span><b>{summary.merged}</b> {t.merged}</span>
+                  <span><b>{summary.open}</b> {t.open}</span>
+                  <span><b>{summary.closed}</b> {t.unmerged}</span>
+                  <span><b>{summary.repositories}</b> {t.repositories}</span>
+                  {summary.from && summary.to ? (
+                    <em>{summary.from.slice(0, 7)} → {summary.to.slice(0, 7)}</em>
+                  ) : null}
+                </p>
+
+                {/* 全站唯一一条比例条。之前每个仓库一条（18 条），那是排行榜的画法；
+                    这里只需要一眼看出三类的盘子有多大，所以一条就够。 */}
+                <div
+                  className="feed-overview"
+                  role="img"
+                  aria-label={t.overview(summary.merged, summary.open, summary.closed)}
+                >
+                  {summary.merged > 0 ? <i className="is-merged" style={{ flexGrow: summary.merged }} /> : null}
+                  {summary.open > 0 ? <i className="is-open" style={{ flexGrow: summary.open }} /> : null}
+                  {summary.closed > 0 ? <i className="is-closed" style={{ flexGrow: summary.closed }} /> : null}
                 </div>
-              ))}
-            </div>
+
+                {/* 仓库从 18 行表格压成一行会换行的小药丸。「被哪些项目接受了」这个信息
+                    值得留，但它不该占掉半屏、也不该抢在时间流前面当主角。 */}
+                <div className="feed-repos">
+                  {repositories.map((group) => (
+                    <a
+                      className={`feed-repo-pill${group.merged === 0 ? " is-none" : ""}`}
+                      href={group.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={group.repository}
+                      key={group.repository}
+                    >
+                      <span>{group.name}</span>
+                      <b>{group.merged}/{group.total}</b>
+                    </a>
+                  ))}
+                </div>
+                <p className="feed-repos-hint">{t.reposHint}</p>
+              </>
+            ) : null}
           </section>
 
           {items.length === 0 ? (
-            <section className="portfolio-section"><p className="feed-empty">{t.empty}</p></section>
+            <p className="feed-empty">{t.empty}</p>
           ) : (
-            <>
-              <section className="portfolio-section">
-                <div className="portfolio-section-heading">
-                  <p>{t.reposEyebrow}</p>
-                  <h2>{t.reposTitle}</h2>
-                  <span>{t.reposSub}</span>
-                </div>
-                <div className="feed-repo-list">
-                  {repositories.map((group) => (
-                    <RepositoryRow group={group} locale={locale} maxTotal={maxTotal} key={group.repository} />
+            <section className="feed-stream">
+              {months.map((bucket) => (
+                <Fragment key={bucket.month}>
+                  <h2 className="feed-month">
+                    <span>{monthLabel(bucket.month, locale)}</span>
+                    <i>{t.monthCount(bucket.items.length)}</i>
+                  </h2>
+                  {bucket.items.map((item) => (
+                    <FeedItem item={item} locale={locale} key={`${item.repository}#${item.number}`} />
                   ))}
-                </div>
-              </section>
-
-              <section className="portfolio-section">
-                <div className="portfolio-section-heading">
-                  <p>{t.timelineEyebrow}</p>
-                  <h2>{t.timelineTitle}</h2>
-                  <span>{t.timelineSub}</span>
-                </div>
-                <div className="feed-timeline">
-                  {months.map((bucket) => (
-                    <div className="feed-month" key={bucket.month}>
-                      <div className="feed-month-head">
-                        <h3>{monthLabel(bucket.month, locale)}</h3>
-                        <span>{t.monthCount(bucket.items.length)}</span>
-                      </div>
-                      <div className="feed-pr-list">
-                        {bucket.items.map((item) => (
-                          <PullRequestRow item={item} locale={locale} key={`${item.repository}#${item.number}`} />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </>
+                </Fragment>
+              ))}
+            </section>
           )}
 
-          <footer className="portfolio-footer">
+          <footer className="feed-footer">
             <span>{t.footer}</span>
-            <form className="portfolio-footer-generator" onSubmit={submit}>
+            <form onSubmit={submit}>
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.input} aria-label={t.input} />
               <button type="submit">{t.build} →</button>
             </form>
