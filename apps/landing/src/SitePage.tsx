@@ -3,6 +3,7 @@ import { decodeSiteSpec, fetchSite, studioPath } from "./site-client.js";
 import type { SiteGeneration, SiteLocale, SiteSpec } from "./site-spec.js";
 import { isSiteSpec, repairSiteSpec, validateSiteSpec } from "./site-spec.js";
 import SiteRenderer from "./SiteRenderer.js";
+import { SITE_AGENT_PATH } from "./routes.js";
 
 const loadingCopy = {
   en: ["Reading public GitHub", "Understanding the work", "Curating projects", "Writing the page", "Choosing visual direction"],
@@ -51,9 +52,9 @@ export default function SitePage({ username }: { username: string }) {
 
   const spec = useMemo(() => draft ?? generation?.spec ?? null, [draft, generation]);
 
-  if (!generation && !error) return <div className="site-loading-screen"><a className="site-product-mark" href="/">PERSONAL SITE AGENT <i>β</i></a><div className="site-loading-core"><span className="site-loading-orbit" /><p>@{username}</p><h1>{loadingCopy[locale][step]}</h1><div>{loadingCopy[locale].map((label, index) => <span className={index <= step ? "is-done" : ""} key={label}>{index < step ? "✓" : index === step ? "●" : "○"} {label}</span>)}</div></div></div>;
+  if (!generation && !error) return <div className="site-loading-screen"><a className="site-product-mark" href={SITE_AGENT_PATH}>PERSONAL SITE AGENT <i>β</i></a><div className="site-loading-core"><span className="site-loading-orbit" /><p>@{username}</p><h1>{loadingCopy[locale][step]}</h1><div>{loadingCopy[locale].map((label, index) => <span className={index <= step ? "is-done" : ""} key={label}>{index < step ? "✓" : index === step ? "●" : "○"} {label}</span>)}</div></div></div>;
 
-  if (error || !generation || !spec) return <div className="site-error-screen"><a className="site-product-mark" href="/">PERSONAL SITE AGENT <i>β</i></a><h1>{locale === "zh" ? "这个主页暂时生成失败" : "This site could not be generated"}</h1><p>{error ?? "Unknown error"}</p><div><button type="button" onClick={() => setReload((value) => value + 1)}>{locale === "zh" ? "重试" : "Retry"}</button><a href="/">{locale === "zh" ? "返回首页" : "Back home"}</a></div></div>;
+  if (error || !generation || !spec) return <div className="site-error-screen"><a className="site-product-mark" href={SITE_AGENT_PATH}>PERSONAL SITE AGENT <i>β</i></a><h1>{locale === "zh" ? "这个主页暂时生成失败" : "This site could not be generated"}</h1><p>{error ?? "Unknown error"}</p><div><button type="button" onClick={() => setReload((value) => value + 1)}>{locale === "zh" ? "重试" : "Retry"}</button><a href={SITE_AGENT_PATH}>{locale === "zh" ? "返回首页" : "Back home"}</a></div></div>;
 
-  return <div className="site-public-wrap"><div className="site-public-tools"><a href="/" className="site-product-mark">PERSONAL SITE AGENT <i>β</i></a><div>{draft ? <span className="site-draft-badge">{locale === "zh" ? "分享草稿" : "Shared draft"}</span> : null}<button type="button" onClick={() => setLocale((value) => value === "zh" ? "en" : "zh")}>{locale === "zh" ? "EN" : "中"}</button><a className="site-customize-btn" href={studioPath(username)}>{locale === "zh" ? "用 Agent 修改" : "Customize with Agent"} ↗</a></div></div><SiteRenderer generation={generation} spec={spec} /></div>;
+  return <div className="site-public-wrap"><div className="site-public-tools"><a href={SITE_AGENT_PATH} className="site-product-mark">PERSONAL SITE AGENT <i>β</i></a><div>{draft ? <span className="site-draft-badge">{locale === "zh" ? "分享草稿" : "Shared draft"}</span> : null}<button type="button" onClick={() => setLocale((value) => value === "zh" ? "en" : "zh")}>{locale === "zh" ? "EN" : "中"}</button><a className="site-customize-btn" href={studioPath(username)}>{locale === "zh" ? "用 Agent 修改" : "Customize with Agent"} ↗</a></div></div><SiteRenderer generation={generation} spec={spec} /></div>;
 }

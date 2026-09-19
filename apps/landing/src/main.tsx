@@ -6,6 +6,7 @@ import AppService from "./AppService.js";
 import PortfolioPage from "./PortfolioPage.js";
 import SitePage from "./SitePage.js";
 import SiteStudio from "./SiteStudio.js";
+import { resolveRoute } from "./routes.js";
 import "./styles.css";
 import "./portfolio.css";
 import "./portfolio-v2.css";
@@ -16,20 +17,27 @@ const styleEl = document.createElement("style");
 styleEl.textContent = themeStyle;
 document.head.appendChild(styleEl);
 
-function decodeSegment(value: string): string {
-  try { return decodeURIComponent(value); } catch { return value; }
-}
-
-const path = window.location.pathname;
-const siteMatch = path.match(/^\/u\/([^/]+)\/?$/);
-const studioMatch = path.match(/^\/studio\/([^/]+)\/?$/);
-const portfolioMatch = path.match(/^\/portfolio\/([^/]+)\/?$/);
+// 路径 → 组件的映射住在 routes.ts，因为 worker 也要用同一份来改写
+// <title>/og:/<html lang>。这里只负责挑组件。
+const route = resolveRoute(window.location.pathname);
 
 let content: React.ReactNode;
-if (siteMatch) content = <SitePage username={decodeSegment(siteMatch[1]!)} />;
-else if (studioMatch) content = <SiteStudio username={decodeSegment(studioMatch[1]!)} />;
-else if (portfolioMatch) content = <PortfolioPage username={decodeSegment(portfolioMatch[1]!)} />;
-else if (path === "/lab" || path === "/lab/") content = <App />;
-else content = <AppService />;
+switch (route.kind) {
+  case "site":
+    content = <SitePage username={route.username} />;
+    break;
+  case "studio":
+    content = <SiteStudio username={route.username} />;
+    break;
+  case "portfolio":
+    content = <PortfolioPage username={route.username} />;
+    break;
+  case "site-agent":
+    content = <AppService />;
+    break;
+  case "lab":
+    content = <App />;
+    break;
+}
 
 createRoot(document.getElementById("root")!).render(<React.StrictMode>{content}</React.StrictMode>);
