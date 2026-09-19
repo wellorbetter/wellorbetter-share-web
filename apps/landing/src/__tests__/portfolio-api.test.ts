@@ -130,6 +130,9 @@ function githubStub(status: { user?: number; repos?: number; search?: number } =
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     calls.push(url);
     if (hold) await hold;
+    // contributions 那块只在有 token 时才会发；给一个空 user 让 activity() 干净地
+    // 返回 null，而不是靠「替身抛异常、被 activity 的 catch 吞掉」蒙对。
+    if (url.includes("/graphql")) return Response.json({ data: { user: null } });
     if (url.includes("/search/issues")) return reply(status.search ?? 200, PULLS);
     if (url.includes("/repos?")) return reply(status.repos ?? 200, REPOS);
     if (url.includes("/users/")) return reply(status.user ?? 200, USER);
@@ -308,7 +311,96 @@ describe("热缓存", () => {
   });
 });
 
+describe("token 不对的时候", () => {
+  /** 401 = token 被拒（过期、撤销、粘错）。GitHub 对坏 token 一律这个。 */
+  function rejectingStub(tokenStatus = 401) {
+    const withAuth: string[] = [];
+    const withoutAuth: string[] = [];
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const authed = new Headers(init?.headers).has("Authorization");
+      (authed ? withAuth : withoutAuth).push(url);
+      if (url.includes("/graphql")) return Response.json({ message: "Bad credentials" }, { status: tokenStatus });
+      if (authed) return Response.json({ message: "Bad credentials" }, { status: tokenStatus });
+      if (url.includes("/search/issues")) return Response.json(PULLS);
+      if (url.includes("/repos?")) return Response.json(REPOS);
+      return Response.json(USER);
+    });
+    return { withAuth, withoutAuth, fetchImpl };
+  }
+
+  it("被拒就退回未认证重试，而不是整个站挂掉", async () => {
+    // 带着一个坏 token 比不带更糟：未认证只是配额紧（偶尔失败），坏 token 是每次
+    // 都失败。而 token 会过期，所以这是「某天这个站自己坏掉」的场景。
+    const { fetchImpl, withAuth, withoutAuth } = rejectingStub();
+    const d = deferred();
+    vi.stubGlobal("fetch", fetchImpl);
+    const response = await portfolioApi({ GITHUB_TOKEN: "ghp_expired" }, "wellorbetter", d.ctx);
+
+    expect(response.status).toBe(200);
+    const portfolio = (await response.json()) as DeveloperPortfolio;
+    expect(portfolio.stats.sourceRepos).toBe(1);
+    expect(portfolio.stats.externalMergedPullRequests).toBe(1);
+    // 三个 REST 请求各带 token 试一次、各退回一次；GraphQL 没有未认证版本可退。
+    expect(withAuth.filter((u) => !u.includes("/graphql"))).toHaveLength(3);
+    expect(withoutAuth).toHaveLength(3);
+    // 退回后拿到的是完整数据，所以照样该进缓存。
+    await d.settle();
+    expect(cache.only()?.portfolio.profile.login).toBe("wellorbetter");
+  });
+
+  it("末尾带换行的 token 不会把四个请求一起炸掉", async () => {
+    // secret 是粘进 stdin 的。`new Headers({Authorization: "Bearer x\n"})` 直接抛，
+    // 于是 Promise.all 整体 reject，表现是「配了 token 反而每次都 502」，而且错误
+    // 信息里完全看不出跟 token 有关。
+    const { fetchImpl, calls } = githubStub();
+    const d = deferred();
+    vi.stubGlobal("fetch", fetchImpl);
+    const response = await portfolioApi({ GITHUB_TOKEN: "  ghp_pasted_with_newline\n" }, "wellorbetter", d.ctx);
+    expect(response.status).toBe(200);
+    expect(calls).toHaveLength(4); // 三个 REST + GraphQL（有 token 了）
+  });
+
+  it("502 的时候把上游状态码带出来", async () => {
+    // 403（配额用尽，等等就好）和 401（token 被拒，等到天荒地老都不会好）处置方式
+    // 相反，塌成同一句话的话线上根本分不清 —— 这次就卡在这儿过。
+    const { fetchImpl } = githubStub({ user: 403, repos: 403, search: 403 });
+    vi.stubGlobal("fetch", fetchImpl);
+    const response = await portfolioApi({}, "wellorbetter", deferred().ctx);
+    expect(response.status).toBe(502);
+    expect(await response.json()).toMatchObject({ error: { code: "github_unavailable", upstreamStatus: 403 } });
+  });
+
+  it("报出运行时 env 里到底有没有 token", async () => {
+    // `wrangler secret list` 只能说「secret 绑着」，说不出「运行时 env 里有」。这两
+    // 件事会不一致，而上面那些字段（limit、tokenRejected）全是「GitHub 怎么看这个
+    // 请求」，没有一个能区分「worker 里根本没 token」和「有 token 但没起作用」。
+    const down = () => githubStub({ user: 403, repos: 403, search: 403 }).fetchImpl;
+
+    vi.stubGlobal("fetch", down());
+    expect(await (await portfolioApi({}, "wellorbetter", deferred().ctx)).json())
+      .toMatchObject({ error: { tokenConfigured: false } });
+
+    vi.stubGlobal("fetch", down());
+    expect(await (await portfolioApi({ GITHUB_TOKEN: "ghp_real" }, "someone-else", deferred().ctx)).json())
+      .toMatchObject({ error: { tokenConfigured: true } });
+
+    // 只有空白的 token 等于没有 —— 别让它报成 true 骗人。
+    vi.stubGlobal("fetch", down());
+    expect(await (await portfolioApi({ GITHUB_TOKEN: "  \n" }, "third-one", deferred().ctx)).json())
+      .toMatchObject({ error: { tokenConfigured: false } });
+  });
+
+  it("请求根本没发出去时上游状态码是 0", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("network error"); }));
+    const response = await portfolioApi({}, "wellorbetter", deferred().ctx);
+    expect(response.status).toBe(502);
+    expect(await response.json()).toMatchObject({ error: { upstreamStatus: 0 } });
+  });
+});
+
 describe("半残的数据不许进缓存", () => {
+
   it("只有 search 被限流：照样返回，但不留下来", async () => {
     // /search/issues 走的是搜索配额（未认证 10 次/分钟），比 core 更容易先撞上。
     // 撞上之后 /users/:u 往往还是好的，于是页面渲染成功但 PR 数字全是 0。把这个
