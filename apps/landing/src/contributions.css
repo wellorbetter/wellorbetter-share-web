@@ -1,23 +1,27 @@
 /**
- * 开源贡献页（/contributions/:username）自己的那部分。
+ * 开源贡献页（/contributions/:username）。
  *
- * 外壳（.portfolio-page / topbar / .portfolio-state / .portfolio-section /
- * .portfolio-stats / footer）直接复用 portfolio.css —— 同一个 --lab-* 家族、同一种
- * 页面，没有理由再写一遍。这里只有 feed 特有的东西。
+ * 只有 topbar 和 loading / error 态复用 portfolio.css —— 那两个是页面级的壳。正文的
+ * 尺寸自己定，理由写在 ContributionsPage.tsx 顶上：1180px 的 .portfolio-shell 会把
+ * 一个列表拉成中间有上千像素空洞的电子表格。
  *
- * 状态配色沿用 portfolio.css 已经建立的约定:**merged 用 accent，open 用绿色**。
+ * 状态配色沿用 portfolio.css 已经建立的约定：**merged 用 accent，open 用绿色**。
  * 直觉上反了（绿色更像"成功"），但那边先立的，而且和 GitHub 一致（open PR 是绿的）。
  * 两个页面会被同一个人在同一次访问里看到，跨页不一致比单页不直觉更糟。
- * 差别只有一处:那边把绿色写成了 #298641 硬编码，这里用 --lab-lime（= --success，
+ * 差别只有一处：那边把绿色写成了 #298641 硬编码，这里用 --lab-lime（= --success，
  * 亮度 0.47，和那个 hex 基本同一档）。没有顺手去改那边 —— 换色要重新量对比度，
  * 不该夹在这个改动里。
  */
 
-/* ── hero ─────────────────────────────────────────────────────────────────── */
-
-.feed-hero {
-  padding: 46px 0 8px;
+/* 阅读列。760px 是让 15px 的 PR 标题落在 70~90 字符一行的区间里 —— 再宽，每一条
+   的标题和右边的东西之间就开始出现空洞，那正是第一版难看的根源。 */
+.feed-shell {
+  width: min(760px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 56px 0 40px;
 }
+
+/* ── hero ─────────────────────────────────────────────────────────────────── */
 
 .feed-eyebrow {
   margin: 0 0 12px;
@@ -29,259 +33,293 @@
 }
 
 .feed-hero h1 {
-  max-width: 20em;
+  max-width: 22em;
   margin: 0;
-  font-size: clamp(28px, 4.4vw, 46px);
-  line-height: 1.08;
-  letter-spacing: -.03em;
+  font-size: clamp(26px, 3.4vw, 36px);
+  line-height: 1.12;
+  letter-spacing: -.035em;
 }
 
 .feed-hero-sub {
-  max-width: 54em;
-  margin: 14px 0 30px;
+  margin: 13px 0 26px;
   color: var(--lab-muted);
   font-size: 13px;
   line-height: 1.65;
 }
 
-/* 六个格子里唯一一个不是数字的。.portfolio-stat strong 是 28px，装不下
-   "2026-03 → 2026-09" —— 窄屏上会折行并顶掉下面的标签。 */
-.contributions-page .portfolio-stat.is-range strong {
-  font-size: 17px;
-  letter-spacing: -.02em;
-}
-
-/* ── 仓库排行 ─────────────────────────────────────────────────────────────── */
-
-/**
- * 列宽定义在**列表**上，行用 subgrid 借过去。
- *
- * 第一版是每个 .feed-repo 自己 display:grid —— 于是每一行独立算列宽，17 条的 lawnchair
- * 和 1 条的 mxc 各排各的，条形、数字、日期在视觉上全是歪的。行是兄弟元素，它们之间
- * 没有任何共享上下文，subgrid 就是补这个的。
- *
- * 六列:仓库名 | 条形 | 合并数 | 总数 | 时间区间 | 箭头。
- */
-.feed-repo-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(90px, 190px) auto auto auto 14px;
-  column-gap: 18px;
-  overflow: hidden;
-  border: 1px solid var(--lab-line);
-  border-radius: 16px;
-  background: var(--lab-panel);
-}
-
-.feed-repo {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: subgrid;
-  padding: 15px 18px;
-  align-items: center;
-  color: var(--lab-text);
-  text-decoration: none;
-  transition: background 160ms ease;
-}
-
-.feed-repo + .feed-repo {
-  border-top: 1px solid var(--lab-line);
-}
-
-.feed-repo:hover {
-  background: var(--lab-accent-soft);
-}
-
-/* hover 不做 padding-left 位移（.portfolio-contribution 那种）:行是 subgrid，
-   padding 变化会挤压继承来的列轨道，整行的列一起抖。位移交给箭头。 */
-.feed-repo:hover .feed-arrow {
-  transform: translate(2px, -2px);
-}
-
-.feed-repo-name {
-  min-width: 0;
+/* 六个数字一行。数字用 --lab-text 且加粗，说明文字用 muted —— 靠**明度**分层，
+   不靠边框和格子分层。
+   组之间没有分隔符，只有 16px 的间距：每组都以一个 15px 的粗体数字开头，那个数字
+   本身就是分隔符。曾经在每组前面加过 "·"，但它挂在组上就会跟着换行跑到行首，于是
+   窄屏第二行变成以一个点开头；挂在组后面又变成行尾挂一个点。去掉最干净。 */
+.feed-summary {
+  margin: 0 0 14px;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  color: var(--lab-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
-.feed-repo-name b {
-  overflow: hidden;
-  font-size: 14px;
-  letter-spacing: -.02em;
-  text-overflow: ellipsis;
+/* 数字和它的标签必须是**同一个** flex item 并且 nowrap。分开写的话窄屏上会断在中间：
+   "18" 留在第一行行尾，"个上游仓库" 掉到第二行开头。 */
+.feed-summary > span,
+.feed-summary em {
   white-space: nowrap;
 }
 
-.feed-repo-name span {
+.feed-summary b {
+  color: var(--lab-text);
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: -.03em;
+}
+
+.feed-summary em {
   color: var(--lab-muted);
-  font-family: var(--font-mono);
-  font-size: 9px;
+  font-style: normal;
 }
 
-/* 轨道满宽，fill 的宽度是「条数 / 最多的那个仓库」—— 长度是量，分段比例是构成。
-   两层的理由写在 ContributionsPage.tsx 的 RepositoryRow 里。 */
-.feed-bar {
-  height: 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--lab-muted) 11%, transparent);
-}
-
-.feed-bar-fill {
-  height: 100%;
-  min-width: 4px;
+.feed-overview {
+  height: 7px;
+  margin-bottom: 20px;
   overflow: hidden;
   display: flex;
   gap: 2px;
   border-radius: 999px;
+  background: color-mix(in srgb, var(--lab-muted) 11%, transparent);
 }
 
-.feed-bar-fill i {
-  min-width: 3px;
+.feed-overview i.is-merged { background: var(--lab-accent); }
+.feed-overview i.is-open   { background: var(--lab-lime); }
+.feed-overview i.is-closed { background: color-mix(in srgb, var(--lab-muted) 40%, transparent); }
+
+/* ── 仓库药丸 ─────────────────────────────────────────────────────────────── */
+
+.feed-repos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.feed-bar-fill i.is-merged {
-  background: var(--lab-accent);
+.feed-repo-pill {
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  border: 1px solid var(--lab-line);
+  border-radius: 999px;
+  color: var(--lab-text);
+  font-size: 11px;
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease;
 }
 
-.feed-bar-fill i.is-open {
-  background: var(--lab-lime);
+.feed-repo-pill:hover {
+  border-color: var(--lab-accent);
+  background: var(--lab-accent-soft);
 }
 
-.feed-bar-fill i.is-closed {
-  background: color-mix(in srgb, var(--lab-muted) 42%, transparent);
-}
-
-.feed-count-merged,
-.feed-count-total,
-.feed-repo-span {
+.feed-repo-pill b {
+  color: var(--lab-accent);
   font-family: var(--font-mono);
   font-size: 9px;
-  white-space: nowrap;
-}
-
-.feed-count-merged {
-  color: var(--lab-accent);
   font-weight: 850;
 }
 
-.feed-count-total {
+/* 一条都没合的仓库，数字不给强调色 —— 赤陶色的 "0/3" 会被读成一个正面数字。 */
+.feed-repo-pill.is-none b {
   color: var(--lab-muted);
 }
 
-.feed-repo-span {
+.feed-repos-hint {
+  margin: 9px 0 0;
   color: var(--lab-muted);
-  font-size: 8px;
-}
-
-.feed-arrow {
-  color: var(--lab-accent);
-  font-size: 13px;
-  transition: transform 160ms ease;
+  font-family: var(--font-mono);
+  font-size: 9px;
 }
 
 /* ── 时间流 ───────────────────────────────────────────────────────────────── */
 
-.feed-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 26px;
+/**
+ * 左边一条 rail，每条 PR 在上面挂一个点。
+ *
+ * rail 是 .feed-stream 的 ::before（一条 1px 的竖线），点是每个条目自己的 ::before
+ * 盖在线上。这样比给每个条目画一段线简单，也不会在条目之间留下缝。
+ */
+.feed-stream {
+  position: relative;
+  margin-top: 40px;
+  padding-left: 26px;
 }
 
-.feed-month-head {
-  padding: 0 2px 9px;
+/* top 是 21 不是 0：第一个月份节点的中心在 17 + 4.5。从 0 开始的话方块上面会支出
+   一截 11px 的线头，看起来像没接上。 */
+.feed-stream::before {
+  position: absolute;
+  top: 21px;
+  bottom: 10px;
+  left: 4px;
+  width: 1px;
+  background: var(--lab-line);
+  content: "";
+}
+
+/**
+ * 月份分隔器。
+ *
+ * 曾经是 position:sticky + 不透明的 --lab-bg 色带，想让滚到一半时还知道在看哪个月。
+ * 撤掉了，因为那个色带会露出接缝：.portfolio-page 的径向光晕是 `circle at 8% 8%`，
+ * 而背景百分比算的是**整个页面盒子**的高度 —— 390px 宽、5188px 高的手机页面上，
+ * 8% 就是 415px，加上 28rem 半径，光晕一直铺到 y≈863，而第一个月份标题在 y≈765。
+ * 于是色带盖在渐变上，浅色主题里能直接看见一个方块。
+ *
+ * 要紧的是它**取决于页面多长**，也就是取决于这个人有多少条 PR：50 条的人看得见，
+ * 10 条的人看不见。这种缺陷不值得为一个吸顶效果留着。rail 加节点已经够定位了。
+ *
+ * position:relative 是必须的：::before 那个节点要锚在这一行上，不是锚在 .feed-stream
+ * 上（后者是 relative，去掉 sticky 之后它就会变成包含块，节点会跑到流的顶上）。
+ */
+.feed-month {
+  position: relative;
+  margin: 0 0 4px;
+  padding: 14px 0 10px;
   display: flex;
   align-items: baseline;
-  gap: 12px;
-  border-bottom: 1px solid var(--lab-line);
-}
-
-.feed-month-head h3 {
-  margin: 0;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 12px;
   letter-spacing: -.01em;
 }
 
-.feed-month-head span {
+.feed-month + .feed-item {
+  border-top: 0;
+}
+
+/* 月份的节点是**实心**方块。第一版是 1px 描边 + 2px 圆角，那看起来就是一个没勾上的
+   checkbox —— 像个能点的输入控件。实心的才读作层级标记。 */
+.feed-month::before {
+  position: absolute;
+  top: 17px;
+  left: -26px;
+  width: 9px;
+  height: 9px;
+  border-radius: 1px;
+  background: var(--lab-line-strong);
+  content: "";
+}
+
+.feed-month i {
   color: var(--lab-muted);
   font-family: var(--font-mono);
   font-size: 9px;
+  font-style: normal;
+  font-weight: 400;
 }
 
-.feed-pr-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.feed-pr {
-  padding: 14px 4px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 18px;
+.feed-item {
+  position: relative;
+  padding: 13px 0;
+  display: block;
+  border-top: 1px solid color-mix(in srgb, var(--lab-line) 58%, transparent);
   color: var(--lab-text);
   text-decoration: none;
-  transition: background 160ms ease, padding-left 160ms ease;
 }
 
-.feed-pr + .feed-pr {
-  border-top: 1px solid color-mix(in srgb, var(--lab-line) 62%, transparent);
+.feed-item:first-of-type {
+  border-top: 0;
 }
 
-.feed-pr:hover {
-  padding-left: 10px;
+/* 点。背景色填成纸色，所以它会把下面的 rail 切断而不是叠在上面。
+   left 是 -25 不是 -26：rail 在 .feed-stream 的 left:4px、宽 1px，中心在 4.5。
+   点宽 7px，要共心就得从 1px 起，而 .feed-item 的左边缘在 stream 的 26px 处，
+   所以 1 - 26 = -25。月份那个节点宽 9px，从 0 起，中心同样是 4.5。 */
+.feed-item::before {
+  position: absolute;
+  top: 19px;
+  left: -25px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--lab-bg);
+  box-shadow: 0 0 0 1px var(--lab-line-strong);
+  content: "";
+}
+
+.feed-item.is-merged::before {
+  background: var(--lab-accent);
+  box-shadow: 0 0 0 1px var(--lab-accent);
+}
+
+.feed-item.is-open::before {
+  box-shadow: 0 0 0 1.5px var(--lab-lime);
+}
+
+/* is-closed 就是默认那个灰圈：未合并是中性事实，不是错误。红色会把"提了没被接受"
+   画成失败，而这一页的立场恰好是这些照样值得放出来。 */
+
+.feed-item:hover {
   background: var(--lab-accent-soft);
+  /* 撑出左右的内边距但不挪动文字：负 margin 抵掉 padding，所以 hover 时高亮块比
+      文字宽一圈，而文字一动不动。行会抖的 hover 在长列表里很烦人。 */
+  margin: 0 -12px;
+  padding-left: 12px;
+  padding-right: 12px;
+  border-radius: 8px;
 }
 
-.feed-pr-main {
-  min-width: 0;
+/* 绝对定位的子元素锚的是 padding box，而 hover 时负 margin 把那条边往左推了 12px，
+   所以 left 得跟着加 12（-25 + 12）才能让点在屏幕上原地不动。 */
+.feed-item:hover::before {
+  left: -13px;
 }
 
-.feed-pr-meta {
+.feed-item-meta {
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   color: var(--lab-muted);
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 9px;
 }
 
-.feed-pr-repo {
-  color: var(--lab-accent);
+/* 仓库名用正文色而不是 accent。状态已经占了 accent（merged 那一档），两个赤陶色的词
+   紧挨着会糊成一团 —— 这一页的 accent 只表示「被合并 / 强调」这一件事。 */
+.feed-item-repo {
+  color: var(--lab-text);
   font-weight: 800;
 }
 
-.feed-pr h3 {
-  margin: 7px 0 0;
-  font-size: 14px;
-  line-height: 1.4;
+/**
+ * 状态是 meta 行的**第一个**词，不是被 margin-left:auto 顶到行尾的那个。
+ *
+ * 顶到行尾的话，标题在 x=1040 结束、状态在 1507，中间又是一段空洞 —— 那正是整页
+ * 重画要治的毛病，只是从 1000px 缩到了 330px。而「竖着扫一眼看状态」这件事 rail 上
+ * 那排点已经做到了，右边那一列是冗余的，只剩下洞。
+ *
+ * 放在开头还顺手得到一个真的列：中文三个标签都是 3 个字，天然对齐。min-width 给
+ * 5em 是为了英文（MERGED / OPEN / UNMERGED，最宽 8 字符）也能对上。
+ */
+.feed-item-status {
+  min-width: 5em;
+  font-weight: 850;
+}
+
+.feed-item.is-merged .feed-item-status { color: var(--lab-accent); }
+.feed-item.is-open .feed-item-status { color: var(--lab-lime); }
+
+.feed-item h3 {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
   letter-spacing: -.02em;
 }
 
-.feed-status {
-  padding: 6px 8px;
-  border: 1px solid var(--lab-line);
-  border-radius: 999px;
-  color: var(--lab-muted);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  font-weight: 850;
-  white-space: nowrap;
-}
-
-.feed-status.is-merged {
-  color: var(--lab-accent);
-  border-color: color-mix(in srgb, var(--lab-accent) 38%, var(--lab-line));
-  background: var(--lab-accent-soft);
-}
-
-.feed-status.is-open {
-  color: var(--lab-lime);
-  border-color: color-mix(in srgb, var(--lab-lime) 38%, var(--lab-line));
-}
-
-/* is-closed 不给颜色:未合并是中性事实，不是错误。红色会把"提了没被接受"
-   画成失败，而这一页的立场恰好是这些照样值得放出来。 */
+/* ── 其余 ─────────────────────────────────────────────────────────────────── */
 
 .feed-portfolio-link {
   padding: 7px 11px;
@@ -300,30 +338,57 @@
 }
 
 .feed-empty {
-  margin: 0;
+  margin: 40px 0 0;
   color: var(--lab-muted);
   font-size: 13px;
 }
 
+.feed-footer {
+  margin-top: 46px;
+  padding-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--lab-line);
+  color: var(--lab-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.feed-footer form {
+  display: flex;
+  gap: 7px;
+}
+
+.feed-footer input {
+  width: 160px;
+  padding: 7px 10px;
+  border: 1px solid var(--lab-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lab-text);
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+
+.feed-footer button {
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--lab-accent);
+  color: var(--on-primary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
-  /* 六列塞不进 390px，所以换成四列 × 三行:名字 + 箭头 / 条形 / 三个数字。
-     列宽还是定义在列表上（行仍然是 subgrid），行内位置逐个写死 —— 不写的话
-     第 6 个子元素会被自动排到第二行第一列，箭头就孤零零占一行。 */
-  .feed-repo-list {
-    grid-template-columns: auto auto minmax(0, 1fr) 14px;
-    column-gap: 12px;
+  .feed-shell {
+    padding-top: 34px;
   }
-
-  .feed-repo {
-    row-gap: 9px;
-  }
-
-  .feed-repo-name    { grid-area: 1 / 1 / 2 / 4; }
-  .feed-arrow        { grid-area: 1 / 4 / 2 / 5; align-self: start; }
-  .feed-bar          { grid-area: 2 / 1 / 3 / 5; }
-  .feed-count-merged { grid-area: 3 / 1 / 4 / 2; }
-  .feed-count-total  { grid-area: 3 / 2 / 4 / 3; }
-  .feed-repo-span    { grid-area: 3 / 3 / 4 / 5; }
 
   .feed-portfolio-link {
     display: none;
@@ -331,18 +396,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .feed-repo,
-  .feed-pr,
-  .feed-arrow {
+  .feed-repo-pill {
     transition: none;
-  }
-
-  /* hover 时的位移也一起去掉，只留背景色。.feed-pr 回到它的基础 padding-left。 */
-  .feed-pr:hover {
-    padding-left: 4px;
-  }
-
-  .feed-repo:hover .feed-arrow {
-    transform: none;
   }
 }
