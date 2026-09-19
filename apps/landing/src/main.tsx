@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { themeStyle } from "@wellorbetter/design";
 import App from "./App.js";
 import AppService from "./AppService.js";
+import ContributionsPage from "./ContributionsPage.js";
 import PortfolioPage from "./PortfolioPage.js";
 import SitePage from "./SitePage.js";
 import SiteStudio from "./SiteStudio.js";
@@ -11,6 +12,7 @@ import { bootstrapTheme } from "./theme.js";
 import "./styles.css";
 import "./portfolio.css";
 import "./portfolio-v2.css";
+import "./contributions.css";
 import "./site-agent.css";
 import "./presentation.css";
 
@@ -36,6 +38,9 @@ switch (route.kind) {
     break;
   case "portfolio":
     content = <PortfolioPage username={route.username} />;
+    break;
+  case "contributions":
+    content = <ContributionsPage username={route.username} />;
     break;
   case "site-agent":
     content = <AppService />;

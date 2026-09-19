@@ -89,8 +89,20 @@ type ApiError = { error?: { code?: string; message?: string } };
 // available for local integration or a future centralized API deployment.
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ?? "";
 
+/**
+ * 作品集页的路径。
+ *
+ * 这个函数以前返回 `/u/<name>` —— 那是**生成主页**的路由（routes.ts 里的 "site"），
+ * 不是作品集。唯一的调用点是 PortfolioPage 里的用户名表单，于是在作品集页上搜一个
+ * 用户名会把你带去另一种页面，而且没有任何报错。
+ */
 export function portfolioPath(username: string): string {
-  return `/u/${encodeURIComponent(username)}`;
+  return `/portfolio/${encodeURIComponent(username)}`;
+}
+
+/** 只讲开源贡献的那一页。 */
+export function contributionsPath(username: string): string {
+  return `/contributions/${encodeURIComponent(username)}`;
 }
 
 export async function fetchPortfolio(username: string, signal?: AbortSignal): Promise<DeveloperPortfolio> {

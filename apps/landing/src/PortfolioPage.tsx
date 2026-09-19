@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from "react";
 import { icon } from "@wellorbetter/design";
 import { fetchPortfolio, portfolioPath } from "./portfolio.js";
 import type { DeveloperPortfolio, PortfolioContribution } from "./portfolio.js";
+import { contributionStatus } from "./contribution-feed.js";
 import { useThemeToggle } from "./theme.js";
 
 type Locale = "zh" | "en";
@@ -180,7 +181,10 @@ const engineeringStories: Record<Locale, EngineeringStory[]> = {
 
 function ContributionRow({ item, locale }: { item: PortfolioContribution; locale: Locale }) {
   const t = text[locale];
-  const status = item.merged ? t.merged : item.state === "open" ? t.open : t.closed;
+  // merged / open / closed 的判断来自 contribution-feed.ts,不在这里再写一遍三元式:
+  // 原来这段逻辑在本文件、SiteRenderer.tsx 和新的贡献页里各有一份,而"closed 但没
+  // merged 算哪一类"这种事只要有一份写歪就是静默的错。
+  const status = contributionStatus(item);
   return (
     <a className="portfolio-contribution" href={item.url} target="_blank" rel="noreferrer">
       <div className="portfolio-contribution-main">
@@ -191,7 +195,7 @@ function ContributionRow({ item, locale }: { item: PortfolioContribution; locale
         </div>
         <h3>{item.title}</h3>
       </div>
-      <span className={`contribution-status ${item.merged ? "is-merged" : item.state === "open" ? "is-open" : ""}`}>{status}</span>
+      <span className={`contribution-status is-${status}`}>{t[status]}</span>
     </a>
   );
 }

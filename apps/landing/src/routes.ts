@@ -28,7 +28,9 @@ export type Route =
   /** 那个主页的 Agent 编辑器。 */
   | { kind: "studio"; username: string }
   /** 从 GitHub 读出来的作品集页。 */
-  | { kind: "portfolio"; username: string };
+  | { kind: "portfolio"; username: string }
+  /** 只讲开源贡献的那一页：上游 PR 按仓库分组 + 按月的时间流。 */
+  | { kind: "contributions"; username: string };
 
 function decodeSegment(value: string): string {
   try {
@@ -55,6 +57,9 @@ export function resolveRoute(pathname: string): Route {
 
   const portfolioMatch = path.match(/^\/portfolio\/([^/]+)$/);
   if (portfolioMatch) return { kind: "portfolio", username: decodeSegment(portfolioMatch[1]!) };
+
+  const contributionsMatch = path.match(/^\/contributions\/([^/]+)$/);
+  if (contributionsMatch) return { kind: "contributions", username: decodeSegment(contributionsMatch[1]!) };
 
   if (path === SITE_AGENT_PATH) return { kind: "site-agent" };
 
@@ -142,6 +147,16 @@ export function routeMeta(route: Route, projectTitles?: readonly string[]): Rout
         ogTitle: `${route.username} — portfolio`,
         ogDescription: `Projects and contributions by @${route.username}.`,
         lang: "en",
+      };
+    case "contributions":
+      // lang 跟着组件的默认 locale 走（zh），不跟着 portfolio 那条。portfolio 的
+      // meta 写的是 en 而 PortfolioPage 默认渲染中文 —— 那个不一致不值得复制一份。
+      return {
+        title: `${route.username} 的开源贡献 — wellorbetter`,
+        description: `@${route.username} 提给别人仓库的 Pull Request：按上游项目分组，按月排出节奏，merged / open / 未被接受都如实标注。`,
+        ogTitle: `${route.username} 的开源贡献`,
+        ogDescription: `@${route.username} 的上游 PR 轨迹，全部可点回原始 PR。`,
+        lang: "zh-CN",
       };
   }
 }

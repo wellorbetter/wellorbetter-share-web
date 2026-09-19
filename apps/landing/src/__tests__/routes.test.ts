@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SITE_AGENT_PATH, resolveRoute, routeMeta } from "../routes.js";
+import { contributionsPath, portfolioPath } from "../portfolio.js";
 import html from "../../index.html?raw";
 
 /**
@@ -31,6 +32,7 @@ describe("landing routes", () => {
     expect(resolveRoute("/u/wellorbetter")).toEqual({ kind: "site", username: "wellorbetter" });
     expect(resolveRoute("/studio/wellorbetter")).toEqual({ kind: "studio", username: "wellorbetter" });
     expect(resolveRoute("/portfolio/wellorbetter")).toEqual({ kind: "portfolio", username: "wellorbetter" });
+    expect(resolveRoute("/contributions/wellorbetter")).toEqual({ kind: "contributions", username: "wellorbetter" });
   });
 
   it("tolerates a trailing slash on username routes", () => {
@@ -45,7 +47,7 @@ describe("landing routes", () => {
 
   it("falls unknown paths back to wellorbetter, not to the product page", () => {
     // SPA fallback 的目标。以前未知路径给的是英文 SaaS 落地页。
-    for (const path of ["/whatever", "/u", "/u/a/b", "/studio", "/portfolio"]) {
+    for (const path of ["/whatever", "/u", "/u/a/b", "/studio", "/portfolio", "/contributions"]) {
       expect(resolveRoute(path), path).toEqual({ kind: "lab" });
     }
   });
@@ -72,13 +74,28 @@ describe("landing route meta", () => {
   });
 
   it("names the user on generated pages instead of the product", () => {
-    for (const path of ["/u/octocat", "/portfolio/octocat"]) {
+    for (const path of ["/u/octocat", "/portfolio/octocat", "/contributions/octocat"]) {
       expect(routeMeta(resolveRoute(path)).title, path).toContain("octocat");
     }
   });
 
+  /**
+   * 生成路径的 helper 必须能被 resolveRoute 解回同一种页面。
+   *
+   * portfolioPath 以前返回 `/u/<name>` —— 那是**生成主页**的路由，不是作品集。唯一
+   * 的调用点是作品集页上的用户名表单，于是在作品集页搜一个人会把你带去另一种页面，
+   * 而两个路由都存在、都能渲染，所以全程不报错。一个 helper 和一个 resolveRoute 对
+   * 不上，正是这类 bug 的形状。
+   */
+  it("round-trips its own path helpers", () => {
+    expect(resolveRoute(portfolioPath("octocat"))).toEqual({ kind: "portfolio", username: "octocat" });
+    expect(resolveRoute(contributionsPath("octocat"))).toEqual({ kind: "contributions", username: "octocat" });
+    // 用户名是访客给的，helper 编码、resolveRoute 解码，来回要还原。
+    expect(resolveRoute(contributionsPath("a b"))).toEqual({ kind: "contributions", username: "a b" });
+  });
+
   it("never leaves a field empty", () => {
-    for (const path of ["/", SITE_AGENT_PATH, "/u/x", "/studio/x", "/portfolio/x", "/nope"]) {
+    for (const path of ["/", SITE_AGENT_PATH, "/u/x", "/studio/x", "/portfolio/x", "/contributions/x", "/nope"]) {
       const meta = routeMeta(resolveRoute(path));
       for (const [key, value] of Object.entries(meta)) {
         expect(value, `${path} → ${key}`).toBeTruthy();
