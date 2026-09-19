@@ -31,8 +31,15 @@ function Projects({ spec, portfolio, title, subtitle }: { spec: SiteSpec; portfo
   return <SectionShell id="projects" eyebrow="01 / BUILD" title={title} subtitle={subtitle}><div className="generated-project-grid">{spec.projects.map((entry) => { const project = projectByName(portfolio, entry.fullName); if (!project) return null; return <article className={`generated-project-card is-${entry.emphasis}`} key={entry.fullName}><div className="generated-project-top"><span>{project.language ?? "PROJECT"}</span><a href={project.url} target="_blank" rel="noreferrer">↗</a></div><div className="generated-project-body"><h3>{entry.title}</h3><p>{entry.summary}</p><div className="generated-tags">{entry.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="generated-project-foot"><span>★ {project.stars} {t.stars}</span><span>⑂ {project.forks}</span>{project.homepage ? <a href={project.homepage} target="_blank" rel="noreferrer">{t.live} ↗</a> : <a href={project.url} target="_blank" rel="noreferrer">{t.source} ↗</a>}</div></article>; })}</div></SectionShell>;
 }
 
+/**
+ * 贡献卡片。
+ *
+ * <p>{entry.whyItMatters}</p> 只在这个字段非空时才画 —— 确定性基线现在把它留成空字符串，
+ * 理由写在 site-spec.ts 的 contributionEntries 上（那句话只能重复徽章或者编）。日期挪进
+ * meta 行：这张卡片原本从不显示时间，而那是它唯一缺的一个真实字段，比一句填充话值钱。
+ */
 function Contributions({ spec, portfolio, title, subtitle }: { spec: SiteSpec; portfolio: DeveloperPortfolio; title: string; subtitle?: string }) {
-  return <SectionShell id="contributions" eyebrow="02 / CONTRIBUTE" title={title} subtitle={subtitle}><div className="generated-contribution-list">{spec.contributions.map((entry) => { const item = contributionByKey(portfolio, entry.key); if (!item) return null; return <a href={item.url} target="_blank" rel="noreferrer" className="generated-contribution" key={entry.key}><div><div className="generated-contribution-meta"><span>{item.repository}</span><span>#{item.number}</span><b className={`is-${contributionStatus(item)}`}>{status(item, spec.locale)}</b></div><h3>{entry.headline}</h3><p>{entry.whyItMatters}</p></div><span className="generated-contribution-arrow">↗</span></a>; })}</div></SectionShell>;
+  return <SectionShell id="contributions" eyebrow="02 / CONTRIBUTE" title={title} subtitle={subtitle}><div className="generated-contribution-list">{spec.contributions.map((entry) => { const item = contributionByKey(portfolio, entry.key); if (!item) return null; return <a href={item.url} target="_blank" rel="noreferrer" className="generated-contribution" key={entry.key}><div><div className="generated-contribution-meta"><span>{item.repository}</span><span>#{item.number}</span><b className={`is-${contributionStatus(item)}`}>{status(item, spec.locale)}</b><time dateTime={item.createdAt}>{item.createdAt.slice(0, 10)}</time></div><h3>{entry.headline}</h3>{entry.whyItMatters ? <p>{entry.whyItMatters}</p> : null}</div><span className="generated-contribution-arrow">↗</span></a>; })}</div></SectionShell>;
 }
 
 function Activity({ spec, portfolio, title, subtitle }: { spec: SiteSpec; portfolio: DeveloperPortfolio; title: string; subtitle?: string }) {

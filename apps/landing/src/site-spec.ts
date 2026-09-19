@@ -168,9 +168,9 @@ function tags(project: PortfolioProject): string[] {
 
 function localized(locale: SiteLocale) {
   return locale === "zh" ? {
-    work: "作品", oss: "开源", about: "关于", selected: "代表作品", selectedSub: "Agent 根据你的目标，从公开 GitHub 项目中筛出的重点。", contributions: "开源贡献", contributionsSub: "优先展示在其他代码库里的真实协作。", activity: "GitHub 动态", aboutTitle: "关于", contact: "联系", merged: "已合并到上游", open: "正在上游协作", closed: "公开的上游工作", evidence: "真实工程证据，可直接打开原始 PR 验证。",
+    work: "作品", oss: "开源", about: "关于", selected: "代表作品", selectedSub: "Agent 根据你的目标，从公开 GitHub 项目中筛出的重点。", contributions: "开源贡献", contributionsSub: "优先展示在其他代码库里的真实协作。", activity: "GitHub 动态", aboutTitle: "关于", contact: "联系",
   } : {
-    work: "Work", oss: "Open Source", about: "About", selected: "Selected Work", selectedSub: "What the agent thinks is worth seeing first, based on your goal and public GitHub work.", contributions: "Open Source", contributionsSub: "Real work in other codebases, with upstream evidence kept visible.", activity: "GitHub Activity", aboutTitle: "About", contact: "Contact", merged: "Merged upstream", open: "Active upstream collaboration", closed: "Public upstream work", evidence: "Public engineering evidence with the original PR one click away.",
+    work: "Work", oss: "Open Source", about: "About", selected: "Selected Work", selectedSub: "What the agent thinks is worth seeing first, based on your goal and public GitHub work.", contributions: "Open Source", contributionsSub: "Real work in other codebases, with upstream evidence kept visible.", activity: "GitHub Activity", aboutTitle: "About", contact: "Contact",
   };
 }
 
@@ -190,11 +190,29 @@ export function createSiteSpec(portfolio: DeveloperPortfolio, intent = "", local
     emphasis: index === 0 ? "hero" as const : index < 3 ? "featured" as const : "normal" as const,
     tags: tags(project),
   }));
+  /**
+   * whyItMatters 故意留空。
+   *
+   * 这里原本是 `item.merged ? "已合并到上游" : …` 三选一，而 SiteRenderer 同一张卡片上
+   * 已经有个徽章印着「已合并」。于是 merged 的卡片连着两行说同一件事，open 的也一样 ——
+   * 三行里两行重复。closed 那一档（「真实工程证据，可直接打开原始 PR 验证」）不重复，
+   * 但它对每个人的每一条 closed PR 都是同一句话，是填充物而不是信息。
+   *
+   * 要紧的是：能**诚实**写出这一句的素材，这里一份都没有。PortfolioContribution 只有
+   * repo / number / title / state / 两个时间戳（portfolio.ts:16-27），BFF 是从
+   * /search/issues 拼出来的，从来不带 PR 正文。模型那条路也一样 —— compactPortfolio
+   * 喂过去的就是这几个字段，而 system prompt 写着 "Never invent facts"。所以这个位置
+   * 只有两种填法：重复徽章，或者编。
+   *
+   * 于是留空，SiteRenderer 在空的时候不画那个 <p>。字段保留，是为了 PR digest 管道
+   * （从 PR 正文 / diff stat / review 线程离线生成、落成一份提交进仓库的 JSON）跑通之后
+   * 往里填真东西时，不用再动类型和渲染。
+   */
   const contributionEntries = contributions.map((item) => ({
     key: contributionKey(item),
     headline: item.title,
     summary: `${item.repository} #${item.number}`,
-    whyItMatters: item.merged ? text.merged : item.state === "open" ? text.open : text.evidence,
+    whyItMatters: "",
   }));
   const contributionFirst = /open.?source|oss|开源|contribut/i.test(intent);
   const sectionOrder: SiteSpec["sections"] = [
