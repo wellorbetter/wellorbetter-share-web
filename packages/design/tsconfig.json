@@ -1,7 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": []
+    // theme.ts 读写 document.cookie / localStorage / <html>，需要 DOM 类型。
+    // tokens.ts 和 icons.ts 只是字符串，不受影响。
+    "lib": ["ES2022", "DOM"],
+    // vitest 的 describe/it/expect —— theme.test.ts 在这个 include 里面。
+    "types": ["vitest/globals"]
   },
   "include": ["src"]
 }

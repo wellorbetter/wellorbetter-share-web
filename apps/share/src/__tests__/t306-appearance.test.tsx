@@ -1,8 +1,9 @@
 /**
- * Tests for T306 appearance management:
- *  - resolveThemeAttr light/dark/system resolution
- *  - readStoredTheme / readStoredBackground with/without storage
- *  - applyAppearance writes data-theme and --app-bg-image
+ * T306 外观管理。
+ *
+ * 明暗选择本身的契约（cookie 优先、localStorage 迁移、"system" 不写属性）由
+ * packages/design/src/theme.test.ts 钉住 —— 那是四个站共用的那一份。这里只管
+ * share 自己这一层：背景预设，以及两者组合起来落到 document 上的结果。
  */
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import { fireEvent, render, screen, cleanup } from "@testing-library/react";
@@ -12,29 +13,20 @@ import {
   persistAppearance,
   readStoredBackground,
   readStoredTheme,
-  resolveThemeAttr,
 } from "../lib/appearance.js";
 import { ThemeToggle } from "../components/ThemeToggle.js";
 
 const matchMediaMock = vi.fn().mockReturnValue({ matches: false });
 
 beforeEach(() => {
+  for (const pair of document.cookie.split(";")) {
+    const name = pair.split("=")[0]?.trim();
+    if (name) document.cookie = `${name}=; Path=/; Max-Age=0`;
+  }
   localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
   document.documentElement.style.removeProperty("--app-bg-image");
   vi.stubGlobal("matchMedia", matchMediaMock);
-});
-
-describe("resolveThemeAttr", () => {
-  it("resolves explicit light/dark directly", () => {
-    expect(resolveThemeAttr("light", true)).toBe("light");
-    expect(resolveThemeAttr("dark", false)).toBe("dark");
-  });
-
-  it("resolves system to the OS preference", () => {
-    expect(resolveThemeAttr("system", true)).toBe("dark");
-    expect(resolveThemeAttr("system", false)).toBe("light");
-  });
 });
 
 describe("readStoredTheme / readStoredBackground", () => {
@@ -44,6 +36,8 @@ describe("readStoredTheme / readStoredBackground", () => {
   });
 
   it("reads valid stored values", () => {
+    // wb-theme 走的是 design 那份（cookie 优先、localStorage 迁移兜底），
+    // 这里只确认 share 这层转发没断。
     localStorage.setItem("wb-theme", "dark");
     localStorage.setItem("wb-bg", "aurora");
     expect(readStoredTheme()).toBe("dark");
@@ -66,10 +60,14 @@ describe("applyAppearance", () => {
     expect(document.documentElement.style.getPropertyValue("--app-bg-image")).toBe(preset.css);
   });
 
-  it("resolves system theme via matchMedia", () => {
+  it("system 删掉 data-theme，而不是写一个猜出来的值", () => {
+    // 旧行为是 `prefersDark ? "dark" : "light"`：等于把「跟随系统」锁死在页面
+    // 加载那一刻的系统值，访客开着页面切系统主题就不跟了。tokens.ts 的契约是
+    // 属性没写才等于跟随。
     matchMediaMock.mockReturnValue({ matches: true });
+    applyAppearance("dark", "none");
     applyAppearance("system", "none");
-    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
   });
 
   it("falls back to first preset for unknown background id", () => {
@@ -84,6 +82,11 @@ describe("persistAppearance", () => {
     expect(localStorage.getItem("wb-theme")).toBe("light");
     expect(localStorage.getItem("wb-bg")).toBe("veil");
   });
+
+  it("主题同时写成跨子域 cookie —— 不写的话博客读不到", () => {
+    persistAppearance("dark", "none");
+    expect(document.cookie).toContain("wb-theme=dark");
+  });
 });
 
 describe("ThemeToggle", () => {
@@ -95,6 +98,7 @@ describe("ThemeToggle", () => {
     expect(dark.getAttribute("aria-checked")).toBe("true");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("wb-theme")).toBe("dark");
+    expect(document.cookie).toContain("wb-theme=dark");
     cleanup();
   });
 
