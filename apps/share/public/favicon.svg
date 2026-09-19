@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="wellorbetter">
+  <title>wellorbetter</title>
+  <!--
+    「阶流」: two strokes, the lower/longer one is where things are (well), the
+    upper/shorter one is the step up (or better). The whole name, no letters.
+
+    Everything here is a <rect>. A favicon cannot use a webfont — the SVG is
+    rendered outside the document, so @font-face never loads and text falls back
+    to whatever the OS picks, at which point the mark is a different mark on
+    every machine. So: no <text>, ever.
+
+    Geometry is on a 32 grid but every edge lands on an even number, so at the
+    16px size browsers actually draw this at, each edge is still on a whole
+    pixel and the bars stay crisp instead of going 50%-grey on both sides.
+
+    Colours are the brand tokens converted to sRGB hex, not oklch(): this file
+    is parsed by the favicon renderer, not the page's CSS engine, and a colour
+    it cannot parse is not a fallback — it is black. Source of truth is
+    opendesign/design-systems/wellorbetter-brand/tokens/colors_and_type.css:
+      paper-1  light oklch(0.968 0.008 78) → #f7f4ef   dark oklch(0.185 0.012 62) → #17120d
+      ink-1    light oklch(0.235 0.014 55) → #231c18    dark oklch(0.945 0.008 80) → #f0ece7
+      accent   light oklch(0.55 0.135 42)  → #b15229    dark oklch(0.70 0.125 45)  → #de845a
+    If those tokens move, this file does not follow automatically. It is the one
+    place in the repo holding hardcoded brand hex, and that is on purpose.
+  -->
+  <style>
+    .plate { fill: #f7f4ef }
+    .well  { fill: #231c18 }
+    .better{ fill: #b15229 }
+    @media (prefers-color-scheme: dark) {
+      .plate { fill: #17120d }
+      .well  { fill: #f0ece7 }
+      .better{ fill: #de845a }
+    }
+  </style>
+  <rect class="plate" width="32" height="32" rx="7" />
+  <!-- or better: higher, shorter, accent -->
+  <rect class="better" x="12" y="8" width="16" height="6" rx="1.5" />
+  <!-- well: the baseline, longer, ink -->
+  <rect class="well" x="4" y="18" width="18" height="6" rx="1.5" />
+</svg>

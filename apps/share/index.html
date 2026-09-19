@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- .ico 先、svg 后：支持 SVG favicon 的浏览器取后者（标签页跟系统明暗走），
+         不支持的取 .ico。跟落地页是同一份文件、同一套几何。 -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="description" content="wellorbetter 文件分享" />
     <meta
       http-equiv="Content-Security-Policy"
