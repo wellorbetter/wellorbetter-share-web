@@ -125,35 +125,85 @@ query PortfolioActivity($login: String!) {
   }
 }`;
 
+/**
+ * 取 token，顺手 trim。
+ *
+ * trim 不是洁癖：secret 是粘进 stdin 的，末尾多一个换行的话
+ * `new Headers({ Authorization: "Bearer ghp_x\n" })` 会直接抛（HTTP 头里不允许换
+ * 行），于是四个请求一起炸，对外的表现是「配了 token 反而每次都 502」—— 比不配
+ * token 更糟，而且错误信息里完全看不出跟 token 有关。
+ */
+function githubToken(env: PortfolioEnv): string | null {
+  const value = env.GITHUB_TOKEN?.trim();
+  return value ? value : null;
+}
+
 function headers(env: PortfolioEnv): Headers {
   const value = new Headers({
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "wellorbetter-portfolio/2.0",
   });
-  if (env.GITHUB_TOKEN) value.set("Authorization", `Bearer ${env.GITHUB_TOKEN}`);
+  const token = githubToken(env);
+  if (token) value.set("Authorization", `Bearer ${token}`);
   return value;
 }
 
-async function githubJson<T>(env: PortfolioEnv, url: string): Promise<{ status: number; data: T | null }> {
-  const response = await fetch(url, { headers: headers(env) });
-  if (!response.ok) return { status: response.status, data: null };
-  return { status: response.status, data: (await response.json()) as T };
+/**
+ * 上游一次请求的结果。
+ *
+ * limit/remaining 是 GitHub 回的配额计数；tokenRejected 表示「带 token 那次被 401
+ * 了、这个结果是退回未认证拿到的」。两个都只用于 unavailable 的诊断输出。
+ */
+type GithubResult<T> = {
+  status: number;
+  data: T | null;
+  limit: string | null;
+  remaining: string | null;
+  tokenRejected: boolean;
+};
+
+/**
+ * 带 token 取；token 被拒就退回未认证再来一次。
+ *
+ * GitHub 对坏 token 回 401（过期、被撤销、粘错、粘进了多余的字符）。带着一个坏
+ * token 比不带更糟：未认证只是配额紧（60 次/小时，偶尔失败），坏 token 是**每次
+ * 都**失败。而 token 会过期 —— fine-grained token 默认就有有效期 —— 所以这不是
+ * 假想的场景，是「某天这个站会自己坏掉，且看不出为什么」。
+ *
+ * 退回之后的行为跟没配 token 完全一样，也就是这个 PR 之前的线上状态：靠缓存里的
+ * 旧数据撑住可用性。少的只有 contributions 那一块（GraphQL 强制认证）。
+ */
+async function githubJson<T>(env: PortfolioEnv, url: string): Promise<GithubResult<T>> {
+  let response = await fetch(url, { headers: headers(env) });
+  let tokenRejected = false;
+  if (response.status === 401 && githubToken(env)) {
+    console.error("github_token_rejected", { url, status: 401 });
+    tokenRejected = true;
+    response = await fetch(url, { headers: headers({}) });
+  }
+  const limit = response.headers.get("X-RateLimit-Limit");
+  const remaining = response.headers.get("X-RateLimit-Remaining");
+  if (!response.ok) return { status: response.status, data: null, limit, remaining, tokenRejected };
+  return { status: response.status, data: (await response.json()) as T, limit, remaining, tokenRejected };
 }
 
 async function activity(env: PortfolioEnv, username: string): Promise<PortfolioActivity | null> {
-  if (!env.GITHUB_TOKEN) return null;
+  const token = githubToken(env);
+  // GraphQL 接口强制认证，没有 token 这一块就是没有 —— 不是错误。
+  if (!token) return null;
   try {
     const response = await fetch(GITHUB_GRAPHQL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+        Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
         "User-Agent": "wellorbetter-portfolio/2.0",
       },
       body: JSON.stringify({ query: CONTRIBUTION_QUERY, variables: { login: username } }),
     });
+    if (response.status === 401) console.error("github_token_rejected", { url: GITHUB_GRAPHQL, status: 401 });
     if (!response.ok) return null;
     const payload = (await response.json()) as GraphqlActivity;
     if (payload.errors?.length) return null;
@@ -265,7 +315,15 @@ function contributions(username: string, items: GitHubPull[]): PortfolioContribu
  * complete = 四个 GitHub 请求里「会影响内容」的那几个都成功了。这个字段存在的
  * 理由见下面 writeCache 上面那段：半残的结果照样返回，但不许进缓存。
  */
-type BuildResult = { status: number; portfolio: DeveloperPortfolio | null; complete: boolean };
+type BuildResult = {
+  status: number;
+  portfolio: DeveloperPortfolio | null;
+  complete: boolean;
+  /** 失败时报给调用方的诊断信息，见 unavailable。 */
+  limit?: string | null;
+  remaining?: string | null;
+  tokenRejected?: boolean;
+};
 
 async function build(env: PortfolioEnv, username: string): Promise<BuildResult> {
   const encoded = encodeURIComponent(username);
@@ -283,7 +341,16 @@ async function build(env: PortfolioEnv, username: string): Promise<BuildResult> 
   ]);
 
   if (userResult.status === 404) return { status: 404, portfolio: null, complete: false };
-  if (!userResult.data) return { status: userResult.status || 502, portfolio: null, complete: false };
+  if (!userResult.data) {
+    return {
+      status: userResult.status || 502,
+      portfolio: null,
+      complete: false,
+      limit: userResult.limit,
+      remaining: userResult.remaining,
+      tokenRejected: userResult.tokenRejected,
+    };
+  }
 
   const user = userResult.data;
   const repos = repoResult.data ?? [];
@@ -424,6 +491,40 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
+/**
+ * 上游失败时把 GitHub 的状态码和配额计数带出来。
+ *
+ * 原来所有失败都塌成同一句「GitHub data is temporarily unavailable」，于是线上出问
+ * 题时完全分不清是哪种失败，而它们的处置方式正好不一样：
+ *   - tokenRejected = token 被 401 了（过期、撤销、粘错），等到天荒地老都不会好；
+ *   - 403 + limit 60 = 走的是未认证配额（按机房 IP 共用）—— 要么没配 token，要么
+ *     配了但被拒之后退回了未认证，靠 tokenRejected 区分这两种；
+ *   - 403 + limit 5000 = token 生效了，是真的把认证配额用完了；
+ *   - 0 = 请求没发出去（Headers 构造失败、网络层报错）。
+ * `X-RateLimit-Limit` 是 GitHub 自己回的，这一个数字就能区分「配了 token」和
+ * 「token 生效了」—— 这两件事不是一回事，我就是在这儿卡了两轮。都不是秘密。
+ *
+ * tokenConfigured 是第三个必要的信息：上面那些全是「GitHub 怎么看这个请求」，都
+ * 无法区分「worker 里根本没有 token」和「有 token 但没起作用」。`wrangler secret
+ * list` 说得出 secret 绑着，说不出**运行时 env 里到底有没有**，而这两件事真的会不
+ * 一致。只报布尔值，不碰 token 本身。
+ */
+function unavailable(upstream: { status: number; limit?: string | null; remaining?: string | null; tokenRejected?: boolean; tokenConfigured?: boolean }): Response {
+  return jsonResponse(
+    {
+      error: {
+        code: "github_unavailable",
+        message: "GitHub data is temporarily unavailable",
+        upstreamStatus: upstream.status,
+        tokenConfigured: Boolean(upstream.tokenConfigured),
+        ...(upstream.tokenRejected ? { tokenRejected: true } : {}),
+        ...(upstream.limit ? { rateLimit: { limit: Number(upstream.limit), remaining: Number(upstream.remaining ?? 0) } } : {}),
+      },
+    },
+    502,
+  );
+}
+
 export async function portfolioApi(env: PortfolioEnv, username: string, ctx: DeferredContext): Promise<Response> {
   if (!USERNAME_RE.test(username)) return jsonResponse({ error: { code: "invalid_username", message: "Invalid GitHub username" } }, 400);
 
@@ -433,17 +534,19 @@ export async function portfolioApi(env: PortfolioEnv, username: string, ctx: Def
     return jsonResponse(cached.portfolio);
   }
 
+  const tokenConfigured = Boolean(githubToken(env));
   try {
     const result = await build(env, username);
     if (!result.portfolio) {
       if (result.status === 404) return jsonResponse({ error: { code: "github_user_not_found", message: "GitHub user not found" } }, 404);
-      return jsonResponse({ error: { code: "github_unavailable", message: "GitHub data is temporarily unavailable" } }, 502);
+      return unavailable({ status: result.status, limit: result.limit, remaining: result.remaining, tokenRejected: result.tokenRejected, tokenConfigured });
     }
     // waitUntil 而不是 await：写缓存是给下一个访客的，这个访客没必要等。
     if (result.complete) ctx.waitUntil(writeCache(username, result.portfolio));
     return jsonResponse(result.portfolio);
   } catch (error) {
     console.error("portfolio_bff_failed", { username, error: String(error) });
-    return jsonResponse({ error: { code: "github_unavailable", message: "GitHub data is temporarily unavailable" } }, 502);
+    // 0 = 请求本身就没发出去（比如 Headers 构造失败、网络层报错），区别于上游给了状态码。
+    return unavailable({ status: 0, tokenConfigured });
   }
 }
