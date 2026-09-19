@@ -8,6 +8,18 @@ type PortfolioEnv = {
   GITHUB_TOKEN?: string;
 };
 
+/**
+ * ExecutionContext 上只用到 waitUntil。
+ *
+ * 没装 @cloudflare/workers-types（这个 workspace 的 tsconfig 带 DOM lib，两者的
+ * Request/Response 会打架，见 worker.ts 上面那段），所以手写。放在这个文件里导出
+ * 是因为它是需要 waitUntil 的那一层 —— worker.ts 和 site-agent-api.ts 从这儿引，
+ * 免得三个文件各声明一遍同一个接口。
+ */
+export interface DeferredContext {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
 type GitHubUser = {
   login: string;
   name: string | null;
@@ -247,7 +259,15 @@ function contributions(username: string, items: GitHubPull[]): PortfolioContribu
     .slice(0, 60);
 }
 
-async function build(env: PortfolioEnv, username: string): Promise<{ status: number; portfolio: DeveloperPortfolio | null }> {
+/**
+ * 一次构建的结果。
+ *
+ * complete = 四个 GitHub 请求里「会影响内容」的那几个都成功了。这个字段存在的
+ * 理由见下面 writeCache 上面那段：半残的结果照样返回，但不许进缓存。
+ */
+type BuildResult = { status: number; portfolio: DeveloperPortfolio | null; complete: boolean };
+
+async function build(env: PortfolioEnv, username: string): Promise<BuildResult> {
   const encoded = encodeURIComponent(username);
   const search = new URL(`${GITHUB_API}/search/issues`);
   search.searchParams.set("q", `author:${username} type:pr`);
@@ -262,8 +282,8 @@ async function build(env: PortfolioEnv, username: string): Promise<{ status: num
     activity(env, username),
   ]);
 
-  if (userResult.status === 404) return { status: 404, portfolio: null };
-  if (!userResult.data) return { status: userResult.status || 502, portfolio: null };
+  if (userResult.status === 404) return { status: 404, portfolio: null, complete: false };
+  if (!userResult.data) return { status: userResult.status || 502, portfolio: null, complete: false };
 
   const user = userResult.data;
   const repos = repoResult.data ?? [];
@@ -273,6 +293,9 @@ async function build(env: PortfolioEnv, username: string): Promise<{ status: num
 
   return {
     status: 200,
+    // activity 不算：没有 GITHUB_TOKEN 时它**永远**是 null（见 activity 开头那行），
+    // 把它算进来等于这个站从来没有一份「完整」数据可缓存。
+    complete: Boolean(repoResult.data) && Boolean(pullResult.data),
     portfolio: {
       version: 2,
       profile: {
@@ -305,6 +328,91 @@ async function build(env: PortfolioEnv, username: string): Promise<{ status: num
   };
 }
 
+/**
+ * ── 为什么这份缓存要自己记时间戳 ──────────────────────────────────────────────
+ * 以前这里把要返回给浏览器的那个响应原封不动塞进 Cache API，于是缓存条目的寿命
+ * 就等于响应头里的 s-maxage=1800。而 Workers 的 Cache API **不实现**
+ * stale-while-revalidate：条目一过 s-maxage，cache.match 直接返回 undefined ——
+ * 「旧数据」不是被降级使用，是彻底没了。
+ *
+ * 于是每 30 分钟就有一个访客要现场去问 GitHub，而这里问的是**未认证**的 GitHub
+ * API：60 次/小时，配额按出口 IP 算，也就是整个 Cloudflare 机房共用一份。落地页
+ * 上「Live example」那两个链接指向 /u/wellorbetter，所以这一发硬币就是产品演示
+ * 本身。线上连着探三次：502 / 200 / 200 —— 502 那次访客看到的是 site-error-screen
+ * （「这个主页暂时生成失败」）。
+ *
+ * 改成条目自己给足 7 天、新鲜与否由 X-Fetched-At 判断：过期了先把旧的返回，同时
+ * 在 waitUntil 里刷一遍。GitHub 被限流从此只影响数据新鲜度，不影响可用性 ——
+ * 只剩「这个机房还没成功取过一次」那一发仍可能 502，那个只能靠 GITHUB_TOKEN。
+ */
+const CACHE_ORIGIN = "https://portfolio.cache.invalid";
+/** 条目自己的寿命给足，过期判断交给 STAMP_HEADER。 */
+const CACHE_HEADERS = { "Content-Type": "application/json", "Cache-Control": "max-age=604800" };
+const STAMP_HEADER = "X-Fetched-At";
+/** 超过这个时间就在后台刷。一个人的 GitHub 不会 15 分钟变一次。 */
+const FRESH_MS = 900_000;
+
+function edgeCache(): Cache {
+  return (caches as unknown as { default: Cache }).default;
+}
+
+/**
+ * GitHub 用户名大小写不敏感，所以键要归一化。
+ *
+ * 以前的键是 request.url，于是 /api/portfolio/WellOrBetter 和 /wellorbetter 是两份
+ * 缓存、各自抛一次硬币，而且都要各花一份本来就不够的 GitHub 配额。
+ */
+function cacheKey(username: string): Request {
+  return new Request(`${CACHE_ORIGIN}/v2/${encodeURIComponent(username.toLowerCase())}`);
+}
+
+async function readCache(username: string): Promise<{ portfolio: DeveloperPortfolio; fetchedAt: number } | null> {
+  try {
+    const hit = await edgeCache().match(cacheKey(username));
+    if (!hit) return null;
+    const portfolio = (await hit.json()) as DeveloperPortfolio;
+    // 形状不对就当没缓存。缓存里躺着的是上一个版本的代码写进去的东西，字段可能
+    // 已经改了 —— 宁可多问 GitHub 一次，也不要把半个对象喂给 SiteSpec 的校验器。
+    if (typeof portfolio?.version !== "number" || !portfolio.profile?.login) return null;
+    const stamp = Number(hit.headers.get(STAMP_HEADER) ?? 0);
+    return { portfolio, fetchedAt: Number.isFinite(stamp) ? stamp : 0 };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 只有完整的数据才写缓存。
+ *
+ * build 里那四个 GitHub 请求是并行发的，而 /search/issues 走的是**搜索**配额：
+ * 未认证 10 次/分钟，比 core 的 60 次/小时更容易先撞上。撞上之后 /users/:u 那条
+ * 往往还是好的，于是页面照常渲染，只是 PR 相关的数字全是 0、仓库列表是空的 ——
+ * 把这种半残的结果缓存下来，它会在边缘待满有效期，比直接 502 更难发现（我自己
+ * 就被它骗过一次，把「这个用户没什么仓库」记成了待办）。
+ *
+ * 所以：残的照样返回（比报错强，而且下一个请求会重试），但不留。
+ */
+async function writeCache(username: string, portfolio: DeveloperPortfolio): Promise<void> {
+  try {
+    await edgeCache().put(
+      cacheKey(username),
+      new Response(JSON.stringify(portfolio), { headers: { ...CACHE_HEADERS, [STAMP_HEADER]: String(Date.now()) } }),
+    );
+  } catch {
+    // 写不进去不是错误路径：这次要返回的东西已经在手上了。
+  }
+}
+
+/** 后台刷新。拿不到、或者只拿到半残的，就什么都不做 —— 旧的继续用。 */
+async function refresh(env: PortfolioEnv, username: string): Promise<void> {
+  try {
+    const result = await build(env, username);
+    if (result.portfolio && result.complete) await writeCache(username, result.portfolio);
+  } catch {
+    // 后台任务，没人在等它。
+  }
+}
+
 function jsonResponse(value: unknown, status = 200): Response {
   return Response.json(value, {
     status,
@@ -316,13 +424,14 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-export async function portfolioApi(request: Request, env: PortfolioEnv, username: string): Promise<Response> {
+export async function portfolioApi(env: PortfolioEnv, username: string, ctx: DeferredContext): Promise<Response> {
   if (!USERNAME_RE.test(username)) return jsonResponse({ error: { code: "invalid_username", message: "Invalid GitHub username" } }, 400);
 
-  const cache = (caches as unknown as { default: Cache }).default;
-  const cacheKey = new Request(request.url, { method: "GET" });
-  const cached = await cache.match(cacheKey);
-  if (cached) return cached;
+  const cached = await readCache(username);
+  if (cached) {
+    if (Date.now() - cached.fetchedAt > FRESH_MS) ctx.waitUntil(refresh(env, username));
+    return jsonResponse(cached.portfolio);
+  }
 
   try {
     const result = await build(env, username);
@@ -330,9 +439,9 @@ export async function portfolioApi(request: Request, env: PortfolioEnv, username
       if (result.status === 404) return jsonResponse({ error: { code: "github_user_not_found", message: "GitHub user not found" } }, 404);
       return jsonResponse({ error: { code: "github_unavailable", message: "GitHub data is temporarily unavailable" } }, 502);
     }
-    const response = jsonResponse(result.portfolio);
-    await cache.put(cacheKey, response.clone());
-    return response;
+    // waitUntil 而不是 await：写缓存是给下一个访客的，这个访客没必要等。
+    if (result.complete) ctx.waitUntil(writeCache(username, result.portfolio));
+    return jsonResponse(result.portfolio);
   } catch (error) {
     console.error("portfolio_bff_failed", { username, error: String(error) });
     return jsonResponse({ error: { code: "github_unavailable", message: "GitHub data is temporarily unavailable" } }, 502);

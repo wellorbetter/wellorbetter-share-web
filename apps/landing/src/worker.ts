@@ -1,4 +1,5 @@
 import { portfolioApi } from "./portfolio-api.js";
+import type { DeferredContext } from "./portfolio-api.js";
 import { PROJECTS_FEED_URL, orderedCards, parseProjectCards, projectsScriptTag } from "./projects.js";
 import type { LandingCard } from "./projects.js";
 import { resolveRoute, routeMeta } from "./routes.js";
@@ -36,12 +37,8 @@ declare class HTMLRewriter {
   on(selector: string, handler: { element(element: RewriterElement): void }): HTMLRewriter;
   transform(response: Response): Response;
 }
-/** 同上，手写这两个也是为了不引 workers-types。 */
+/** 同上，手写这个也是为了不引 workers-types。（DeferredContext 在 portfolio-api 里。） */
 declare const caches: { default: { match(key: string): Promise<Response | undefined>; put(key: string, response: Response): Promise<void> } };
-/** ExecutionContext 只用到 waitUntil。 */
-interface DeferredContext {
-  waitUntil(promise: Promise<unknown>): void;
-}
 
 /**
  * 在边缘取一份 share 的作品列表。
@@ -176,15 +173,15 @@ export default {
     const portfolioMatch = url.pathname.match(/^\/api\/portfolio\/([^/]+)$/);
     if (portfolioMatch && request.method === "GET") {
       const username = decodedSegment(portfolioMatch[1]!);
-      return username ? portfolioApi(request, env, username) : invalidUsername();
+      return username ? portfolioApi(env, username, ctx) : invalidUsername();
     }
     const siteMatch = url.pathname.match(/^\/api\/site\/([^/]+)$/);
     if (siteMatch && request.method === "GET") {
       const username = decodedSegment(siteMatch[1]!);
-      return username ? siteGetApi(request, env, username) : invalidUsername();
+      return username ? siteGetApi(request, env, username, ctx) : invalidUsername();
     }
-    if (url.pathname === "/api/site/generate" && request.method === "POST") return siteGenerateApi(request, env);
-    if (url.pathname === "/api/site/edit" && request.method === "POST") return siteEditApi(request, env);
+    if (url.pathname === "/api/site/generate" && request.method === "POST") return siteGenerateApi(request, env, ctx);
+    if (url.pathname === "/api/site/edit" && request.method === "POST") return siteEditApi(request, env, ctx);
     if (url.pathname.startsWith("/api/")) return apiNotFound();
     const asset = await env.ASSETS.fetch(request);
     if (asset.status !== 404) return finishHtml(asset, url.pathname, ctx);
